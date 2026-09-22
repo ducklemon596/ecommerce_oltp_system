@@ -10,5 +10,7 @@ def main() -> None:
     print(
         "Generated and validated "
         f"{len(data.brands)} brands, {len(data.categories)} categories, "
-        f"{len(data.sellers)} sellers, and {len(data.products)} products."
+        f"{len(data.sellers)} sellers, {len(data.products)} products, "
+        f"{len(data.customers)} customers, {len(data.promotions)} promotions, and "
+        f"{len(data.promotion_products)} promotion-product mappings."
     )
