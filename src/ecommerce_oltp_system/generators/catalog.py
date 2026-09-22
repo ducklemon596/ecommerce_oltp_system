@@ -96,6 +96,9 @@ def generate_sellers(fake: Faker) -> list[Record]:
             "join_date": fake.date_between(
                 start_date=WINDOW_START.date(), end_date=WINDOW_END.date()
             ),
+            "created_at": fake.date_time_between(
+                start_date=WINDOW_START, end_date=WINDOW_END
+            ),
             "seller_type": random.choice(SELLER_TYPES),
             "rating": round(random.uniform(3.0, 5.0), 1),
             "country": "Vietnam",
@@ -135,6 +138,7 @@ def _generate_product(
         brand["created_at"],
         category["created_at"],
         seller_join_datetime,
+        seller["created_at"],
     )
 
     return {

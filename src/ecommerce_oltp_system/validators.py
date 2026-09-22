@@ -73,6 +73,9 @@ def validate_sellers(sellers: list[Record]) -> None:
         assert WINDOW_START.date() <= seller["join_date"] <= WINDOW_END.date(), (
             "Seller join_date is outside the generation window"
         )
+        assert WINDOW_START <= seller["created_at"] <= WINDOW_END, (
+            "Seller created_at is outside the generation window"
+        )
 
 
 def validate_products(
@@ -109,6 +112,9 @@ def validate_products(
         seller_join_datetime = datetime.combine(seller["join_date"], datetime.min.time())
         assert seller_join_datetime <= product["created_at"], (
             "Product predates its seller"
+        )
+        assert seller["created_at"] <= product["created_at"], (
+            "Product predates its seller record"
         )
 
 

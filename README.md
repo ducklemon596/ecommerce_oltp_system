@@ -22,4 +22,6 @@ sub-categories, then products; customers are independent. Promotions are
 generated after products, and promotion-product mappings use only compatible
 products with real generated FK values. Each mapping is unique, is added only
 after its product and promotion exist, and preserves the base product price.
-Product IDs model the IDs a fresh `SERIAL` database load would assign.
+Products are created no earlier than their brand, category, seller join date,
+and seller `created_at`. Product IDs model the IDs a fresh `SERIAL` database
+load would assign.
