@@ -1,0 +1,20 @@
+[project]
+name = "ecommerce-oltp-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "ducklemon596", email = "thienquang050906@gmai.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "faker>=40.39.0",
+    "psycopg2-binary>=2.9.13",
+]
+
+[project.scripts]
+ecommerce-oltp-system = "ecommerce_oltp_system:main"
+
+[build-system]
+requires = ["uv_build>=0.12.15,<0.13.0"]
+build-backend = "uv_build"
