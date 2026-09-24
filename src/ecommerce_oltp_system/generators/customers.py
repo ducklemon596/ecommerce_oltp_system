@@ -6,6 +6,7 @@ from typing import Callable
 from faker import Faker
 
 from ecommerce_oltp_system.constants import (
+    CREATED_BY,
     CUSTOMER_COUNT,
     GENDERS,
     MAX_UNIQUE_VALUE_ATTEMPTS,
@@ -37,6 +38,13 @@ def generate_customers(fake: Faker) -> list[Record]:
                 "created_at": fake.date_time_between(
                     start_date=WINDOW_START, end_date=WINDOW_END
                 ),
+                "created_by": CREATED_BY,
+                "updated_at": None,
+                "updated_by": None,
+                "deleted_at": None,
+                "deleted_by": None,
+                "is_deleted": False,
+                "loaded_at": None,
             }
         )
     return customers

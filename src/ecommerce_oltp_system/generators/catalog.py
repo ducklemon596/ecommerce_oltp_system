@@ -9,6 +9,7 @@ from faker import Faker
 from ecommerce_oltp_system.constants import (
     BRAND_COUNT,
     CATEGORY_TREE,
+    CREATED_BY,
     MAIN_CATEGORY_COUNT,
     PRODUCT_COUNT,
     SELLER_COUNT,
@@ -24,14 +25,16 @@ def generate_brands(fake: Faker) -> list[Record]:
 
     used_names: set[str] = set()
     brands: list[Record] = []
-    for _ in range(BRAND_COUNT):
+    for position in range(1, BRAND_COUNT + 1):
         brands.append(
             {
+                "brand_code": f"BRD-{position:05d}",
                 "brand_name": _unique_company(fake, used_names),
                 "country": fake.country(),
                 "created_at": fake.date_time_between(
                     start_date=WINDOW_START, end_date=WINDOW_END
                 ),
+                **_audit_fields(),
             }
         )
     return brands
@@ -51,32 +54,36 @@ def generate_categories(fake: Faker) -> list[Record]:
     """Generate main categories first, then their temporally valid children."""
 
     categories: list[Record] = []
-    main_categories: list[Record] = []
-
-    for category_name in CATEGORY_TREE:
+    for position, category_name in enumerate(CATEGORY_TREE, start=1):
         category = {
+            "category_code": f"CAT-{position:05d}",
             "category_name": category_name,
-            "parent_category_ref": None,
+            "parent_category_id": None,
             "level": 1,
             "created_at": fake.date_time_between(
                 start_date=WINDOW_START, end_date=WINDOW_END
             ),
+            **_audit_fields(),
         }
         categories.append(category)
-        main_categories.append(category)
 
-    for parent in main_categories:
-        for category_name in CATEGORY_TREE[parent["category_name"]]:
+    subcategory_position = MAIN_CATEGORY_COUNT + 1
+    for parent_category_id, category_names in enumerate(CATEGORY_TREE.values(), start=1):
+        parent = categories[parent_category_id - 1]
+        for category_name in category_names:
             categories.append(
                 {
+                    "category_code": f"CAT-{subcategory_position:05d}",
                     "category_name": category_name,
-                    "parent_category_ref": parent,
+                    "parent_category_id": parent_category_id,
                     "level": 2,
                     "created_at": fake.date_time_between(
                         start_date=parent["created_at"], end_date=WINDOW_END
                     ),
+                    **_audit_fields(),
                 }
             )
+            subcategory_position += 1
     return categories
 
 
@@ -85,6 +92,7 @@ def generate_sellers(fake: Faker) -> list[Record]:
 
     return [
         {
+            "seller_code": f"SEL-{position:05d}",
             "seller_name": fake.company(),
             "join_date": fake.date_between(
                 start_date=WINDOW_START.date(), end_date=WINDOW_END.date()
@@ -95,8 +103,9 @@ def generate_sellers(fake: Faker) -> list[Record]:
             "seller_type": random.choice(SELLER_TYPES),
             "rating": round(random.uniform(3.0, 5.0), 1),
             "country": "Vietnam",
+            **_audit_fields(),
         }
-        for _ in range(SELLER_COUNT)
+        for position in range(1, SELLER_COUNT + 1)
     ]
 
 
@@ -108,22 +117,27 @@ def generate_products(
 ) -> list[Record]:
     """Generate products using real dependency records for each foreign key."""
 
-    subcategories = [category for category in categories if category["level"] == 2]
+    subcategory_ids = list(range(MAIN_CATEGORY_COUNT + 1, len(categories) + 1))
     return [
-        _generate_product(fake, brands, subcategories, sellers)
-        for _ in range(PRODUCT_COUNT)
+        _generate_product(position, fake, brands, categories, sellers, subcategory_ids)
+        for position in range(1, PRODUCT_COUNT + 1)
     ]
 
 
 def _generate_product(
+    position: int,
     fake: Faker,
     brands: list[Record],
     categories: list[Record],
     sellers: list[Record],
+    subcategory_ids: list[int],
 ) -> Record:
-    brand = random.choice(brands)
-    category = random.choice(categories)
-    seller = random.choice(sellers)
+    brand_id = random.randint(1, BRAND_COUNT)
+    category_id = random.choice(subcategory_ids)
+    seller_id = random.randint(1, SELLER_COUNT)
+    brand = brands[brand_id - 1]
+    category = categories[category_id - 1]
+    seller = sellers[seller_id - 1]
     seller_join_datetime = datetime.combine(seller["join_date"], datetime.min.time())
     earliest_created_at = max(
         WINDOW_START,
@@ -134,10 +148,11 @@ def _generate_product(
     )
 
     return {
+        "product_code": f"PRD-{position:06d}",
         "product_name": fake.catch_phrase(),
-        "category_ref": category,
-        "brand_ref": brand,
-        "seller_ref": seller,
+        "category_id": category_id,
+        "brand_id": brand_id,
+        "seller_id": seller_id,
         "price": Decimal(str(random.uniform(100_000, 50_000_000))).quantize(
             Decimal("0.01")
         ),
@@ -147,4 +162,17 @@ def _generate_product(
             start_date=earliest_created_at, end_date=WINDOW_END
         ),
         "is_active": random.choice((True, False)),
+        **_audit_fields(),
+    }
+
+
+def _audit_fields() -> Record:
+    return {
+        "created_by": CREATED_BY,
+        "updated_at": None,
+        "updated_by": None,
+        "deleted_at": None,
+        "deleted_by": None,
+        "is_deleted": False,
+        "loaded_at": None,
     }

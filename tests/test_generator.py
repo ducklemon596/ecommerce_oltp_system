@@ -52,7 +52,7 @@ class GeneratorTests(unittest.TestCase):
     def test_product_cannot_predate_seller_record(self) -> None:
         data = generate_data()
         product = data.products[0]
-        seller = product["seller_ref"]
+        seller = data.sellers[product["seller_id"] - 1]
         seller["created_at"] = product["created_at"] + timedelta(seconds=1)
 
         with self.assertRaisesRegex(AssertionError, "Product predates its seller record"):
@@ -62,18 +62,18 @@ class GeneratorTests(unittest.TestCase):
 
     def test_records_do_not_include_database_primary_keys(self) -> None:
         data = generate_data()
-        records = (
-            data.brands
-            + data.categories
-            + data.sellers
-            + data.products
-            + data.customers
-            + data.promotions
-            + data.promotion_products
+        tables = (
+            (data.brands, "brand_id"),
+            (data.categories, "category_id"),
+            (data.sellers, "seller_id"),
+            (data.products, "product_id"),
+            (data.customers, "customer_id"),
+            (data.promotions, "promotion_id"),
+            (data.promotion_products, "promo_product_id"),
         )
 
-        for record in records:
-            self.assertFalse(any(field.endswith("_id") for field in record))
+        for records, primary_key in tables:
+            self.assertTrue(all(primary_key not in record for record in records))
 
 
 def _dataset_fingerprint(data: object) -> str:
@@ -82,41 +82,18 @@ def _dataset_fingerprint(data: object) -> str:
     dataset = data
     values = (
         tuple(_record_values(record) for record in dataset.brands),
-        tuple(_category_values(record) for record in dataset.categories),
+        tuple(_record_values(record) for record in dataset.categories),
         tuple(_record_values(record) for record in dataset.sellers),
-        tuple(_product_values(record) for record in dataset.products),
+        tuple(_record_values(record) for record in dataset.products),
         tuple(_record_values(record) for record in dataset.customers),
         tuple(_record_values(record) for record in dataset.promotions),
-        tuple(_mapping_values(record) for record in dataset.promotion_products),
+        tuple(_record_values(record) for record in dataset.promotion_products),
     )
     return sha256(repr(values).encode()).hexdigest()
 
 
 def _record_values(record: dict) -> tuple:
-    return tuple(
-        sorted((field, value) for field, value in record.items() if not field.endswith("_ref"))
-    )
-
-
-def _category_values(category: dict) -> tuple:
-    parent = category["parent_category_ref"]
-    parent_values = _record_values(parent) if parent is not None else None
-    return _record_values(category) + (("parent_category", parent_values),)
-
-
-def _product_values(product: dict) -> tuple:
-    return _record_values(product) + (
-        ("brand", _record_values(product["brand_ref"])),
-        ("category", _category_values(product["category_ref"])),
-        ("seller", _record_values(product["seller_ref"])),
-    )
-
-
-def _mapping_values(mapping: dict) -> tuple:
-    return _record_values(mapping) + (
-        ("promotion", _record_values(mapping["promotion_ref"])),
-        ("product", _product_values(mapping["product_ref"])),
-    )
+    return tuple(sorted(record.items()))
 
 
 if __name__ == "__main__":

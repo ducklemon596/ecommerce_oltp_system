@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from ecommerce_oltp_system.constants import (
     BRAND_COUNT,
+    CREATED_BY,
     CUSTOMER_COUNT,
     DISCOUNT_TYPES,
     GENDERS,
@@ -22,14 +23,26 @@ from ecommerce_oltp_system.constants import (
 from ecommerce_oltp_system.models import Record
 
 
-def _is_generated_reference(record: Record | None, records: list[Record]) -> bool:
-    """Check that a relationship points to a generated in-memory record."""
+def _validate_unique_field(records: list[Record], field: str) -> None:
+    values = [record[field] for record in records]
+    assert len(values) == len(set(values)), f"{field} values must be unique"
 
-    return any(record is candidate for candidate in records)
+
+def _validate_audit_fields(records: list[Record]) -> None:
+    for record in records:
+        assert record["created_by"] == CREATED_BY
+        assert record["updated_at"] is None
+        assert record["updated_by"] is None
+        assert record["deleted_at"] is None
+        assert record["deleted_by"] is None
+        assert record["is_deleted"] is False
+        assert record["loaded_at"] is None
 
 
 def validate_brands(brands: list[Record]) -> None:
     assert len(brands) == BRAND_COUNT, "Expected 20 brands"
+    _validate_unique_field(brands, "brand_code")
+    _validate_audit_fields(brands)
     assert len({brand["brand_name"] for brand in brands}) == BRAND_COUNT, (
         "Brand names must be unique"
     )
@@ -43,6 +56,8 @@ def validate_categories(categories: list[Record]) -> None:
     assert len(categories) == MAIN_CATEGORY_COUNT + SUBCATEGORY_COUNT, (
         "Expected 25 categories"
     )
+    _validate_unique_field(categories, "category_code")
+    _validate_audit_fields(categories)
     assert len({category["category_name"] for category in categories}) == len(categories), (
         "Category names must be unique"
     )
@@ -51,21 +66,21 @@ def validate_categories(categories: list[Record]) -> None:
     subcategories = [category for category in categories if category["level"] == 2]
     assert len(main_categories) == MAIN_CATEGORY_COUNT, "Expected 5 main categories"
     assert len(subcategories) == SUBCATEGORY_COUNT, "Expected 20 sub-categories"
+    assert all(category["level"] == 1 for category in categories[:MAIN_CATEGORY_COUNT])
+    assert all(category["level"] == 2 for category in categories[MAIN_CATEGORY_COUNT:])
+    main_category_ids = set(range(1, MAIN_CATEGORY_COUNT + 1))
 
     for category in categories:
         assert WINDOW_START <= category["created_at"] <= WINDOW_END, (
             "Category created_at is outside the generation window"
         )
         if category["level"] == 1:
-            assert category["parent_category_ref"] is None, (
+            assert category["parent_category_id"] is None, (
                 "A level-1 category cannot have a parent"
             )
         else:
-            parent = category["parent_category_ref"]
-            assert _is_generated_reference(parent, categories), (
-                "A sub-category must reference a generated parent"
-            )
-            assert parent is not None
+            assert category["parent_category_id"] in main_category_ids
+            parent = categories[category["parent_category_id"] - 1]
             assert parent["level"] == 1, "A sub-category parent must be level 1"
             assert parent["created_at"] <= category["created_at"], (
                 "A parent category cannot be newer than its child"
@@ -74,6 +89,8 @@ def validate_categories(categories: list[Record]) -> None:
 
 def validate_sellers(sellers: list[Record]) -> None:
     assert len(sellers) == SELLER_COUNT, "Expected 50 sellers"
+    _validate_unique_field(sellers, "seller_code")
+    _validate_audit_fields(sellers)
     for seller in sellers:
         assert seller["seller_type"] in SELLER_TYPES, "Invalid seller type"
         assert 0 <= seller["rating"] <= 5, "Seller rating must be between 0 and 5"
@@ -93,20 +110,17 @@ def validate_products(
     sellers: list[Record],
 ) -> None:
     assert len(products) == PRODUCT_COUNT, "Expected 3,000 products"
+    _validate_unique_field(products, "product_code")
+    _validate_audit_fields(products)
+    valid_category_ids = set(range(MAIN_CATEGORY_COUNT + 1, len(categories) + 1))
 
     for product in products:
-        brand = product["brand_ref"]
-        category = product["category_ref"]
-        seller = product["seller_ref"]
-        assert _is_generated_reference(brand, brands), (
-            "Product must reference a generated brand"
-        )
-        assert _is_generated_reference(category, categories), (
-            "Product must reference a generated category"
-        )
-        assert _is_generated_reference(seller, sellers), (
-            "Product must reference a generated seller"
-        )
+        assert 1 <= product["brand_id"] <= BRAND_COUNT, "Invalid brand_id"
+        assert product["category_id"] in valid_category_ids, "Invalid category_id"
+        assert 1 <= product["seller_id"] <= SELLER_COUNT, "Invalid seller_id"
+        brand = brands[product["brand_id"] - 1]
+        category = categories[product["category_id"] - 1]
+        seller = sellers[product["seller_id"] - 1]
         assert category["level"] == 2, "Products should use sub-categories"
         assert product["price"] > 0, "Product price must be positive"
         assert product["stock_qty"] >= 0, "Product stock cannot be negative"
@@ -131,6 +145,7 @@ def validate_products(
 
 def validate_customers(customers: list[Record]) -> None:
     assert len(customers) == CUSTOMER_COUNT, "Expected 30,000 customers"
+    _validate_audit_fields(customers)
     assert len({customer["email"] for customer in customers}) == CUSTOMER_COUNT, (
         "Customer emails must be unique"
     )
@@ -146,6 +161,8 @@ def validate_customers(customers: list[Record]) -> None:
 
 def validate_promotions(promotions: list[Record]) -> None:
     assert len(promotions) == PROMOTION_COUNT, "Expected 30 promotions"
+    _validate_unique_field(promotions, "promotion_code")
+    _validate_audit_fields(promotions)
     for promotion in promotions:
         assert promotion["promotion_type"] in PROMOTION_TYPES, "Invalid promotion type"
         assert promotion["discount_type"] in DISCOUNT_TYPES, "Invalid discount type"
@@ -174,51 +191,35 @@ def validate_promotion_products(
     assert len(promotion_products) == PROMOTION_PRODUCT_COUNT, (
         "Expected 500 promotion-product mappings"
     )
-    used_pairs: list[tuple[Record, Record]] = []
+    _validate_audit_fields(promotion_products)
+    used_pairs: set[tuple[int, int]] = set()
 
     for mapping in promotion_products:
-        promotion = mapping["promotion_ref"]
-        product = mapping["product_ref"]
-        assert _is_generated_reference(promotion, promotions), (
-            "Promotion-product mapping must reference a generated promotion"
-        )
-        assert _is_generated_reference(product, products), (
-            "Promotion-product mapping must reference a generated product"
-        )
-        assert not any(
-            used_promotion is promotion and used_product is product
-            for used_promotion, used_product in used_pairs
-        ), "Promotion-product pairs must be unique"
-        used_pairs.append((promotion, product))
+        assert 1 <= mapping["promotion_id"] <= PROMOTION_COUNT
+        assert 1 <= mapping["product_id"] <= PRODUCT_COUNT
+        pair = (mapping["promotion_id"], mapping["product_id"])
+        assert pair not in used_pairs, "Promotion-product pairs must be unique"
+        used_pairs.add(pair)
+
+        promotion = promotions[mapping["promotion_id"] - 1]
+        product = products[mapping["product_id"] - 1]
 
         campaign_start_end = datetime.combine(
             promotion["start_date"], datetime.max.time()
         )
         campaign_end = datetime.combine(promotion["end_date"], datetime.max.time())
-        assert product["created_at"] <= campaign_start_end, (
-            "Mapped product must exist by the campaign start"
-        )
-        assert promotion["created_at"] <= mapping["created_at"], (
-            "Promotion-product mapping predates its promotion"
-        )
-        assert product["created_at"] <= mapping["created_at"], (
-            "Promotion-product mapping predates its product"
-        )
-        assert mapping["created_at"] <= campaign_end, (
-            "Promotion-product mapping is after the campaign end"
-        )
+        assert product["created_at"] <= campaign_start_end
+        assert promotion["created_at"] <= mapping["created_at"]
+        assert product["created_at"] <= mapping["created_at"]
+        assert mapping["created_at"] <= campaign_end
 
         if promotion["discount_type"] == "percentage":
             discount_amount = (
                 product["price"] * promotion["discount_value"] / Decimal("100")
             )
             final_price = product["price"] - discount_amount
-            assert discount_amount <= product["price"], (
-                "Percentage discount exceeds the product price"
-            )
+            assert discount_amount <= product["price"]
         else:
             final_price = product["price"] - promotion["discount_value"]
-            assert promotion["discount_value"] <= product["price"], (
-                "Fixed discount exceeds the product price"
-            )
+            assert promotion["discount_value"] <= product["price"]
         assert final_price >= 0, "Promotion creates a negative product price"

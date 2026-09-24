@@ -1,6 +1,7 @@
 """Public orchestration API for one complete synthetic data generation session."""
 
 import random
+from pathlib import Path
 
 from faker import Faker
 
@@ -25,6 +26,7 @@ from ecommerce_oltp_system.constants import (
     WINDOW_END,
     WINDOW_START,
 )
+from ecommerce_oltp_system.exporter import write_data_files
 from ecommerce_oltp_system.generators.catalog import (
     generate_brands,
     generate_categories,
@@ -73,6 +75,7 @@ __all__ = [
     "generate_categories",
     "generate_customers",
     "generate_data",
+    "generate_and_write_data",
     "generate_products",
     "generate_promotion_products",
     "generate_promotions",
@@ -84,6 +87,7 @@ __all__ = [
     "validate_promotion_products",
     "validate_promotions",
     "validate_sellers",
+    "write_data_files",
 ]
 
 
@@ -121,3 +125,13 @@ def generate_data(seed: int = SEED) -> GeneratedData:
         promotions=promotions,
         promotion_products=promotion_products,
     )
+
+
+def generate_and_write_data(
+    seed: int = SEED, output_dir: str | Path = "data"
+) -> tuple[GeneratedData, list[Path]]:
+    """Generate, validate, and write one complete dataset."""
+
+    data = generate_data(seed)
+    paths = write_data_files(data, output_dir)
+    return data, paths

@@ -16,6 +16,7 @@ PRODUCT_COUNT = 3_000
 CUSTOMER_COUNT = 30_000
 PROMOTION_COUNT = 30
 PROMOTION_PRODUCT_COUNT = 500
+CREATED_BY = "faker_batch"
 
 SELLER_TYPES = ("Official", "Marketplace")
 GENDERS = ("Male", "Female")

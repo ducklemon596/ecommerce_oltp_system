@@ -11,3 +11,6 @@ wheels/
 
 # Specification files
 Project 03 - Python in Data.md
+
+# data files
+*.csv
