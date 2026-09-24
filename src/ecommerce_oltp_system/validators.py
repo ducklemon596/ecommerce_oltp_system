@@ -22,6 +22,12 @@ from ecommerce_oltp_system.constants import (
 from ecommerce_oltp_system.models import Record
 
 
+def _is_generated_reference(record: Record | None, records: list[Record]) -> bool:
+    """Check that a relationship points to a generated in-memory record."""
+
+    return any(record is candidate for candidate in records)
+
+
 def validate_brands(brands: list[Record]) -> None:
     assert len(brands) == BRAND_COUNT, "Expected 20 brands"
     assert len({brand["brand_name"] for brand in brands}) == BRAND_COUNT, (
@@ -41,7 +47,6 @@ def validate_categories(categories: list[Record]) -> None:
         "Category names must be unique"
     )
 
-    category_by_id = {category["category_id"]: category for category in categories}
     main_categories = [category for category in categories if category["level"] == 1]
     subcategories = [category for category in categories if category["level"] == 2]
     assert len(main_categories) == MAIN_CATEGORY_COUNT, "Expected 5 main categories"
@@ -52,12 +57,15 @@ def validate_categories(categories: list[Record]) -> None:
             "Category created_at is outside the generation window"
         )
         if category["level"] == 1:
-            assert category["parent_category_id"] is None, (
+            assert category["parent_category_ref"] is None, (
                 "A level-1 category cannot have a parent"
             )
         else:
-            parent = category_by_id.get(category["parent_category_id"])
-            assert parent is not None, "A sub-category must reference a valid parent"
+            parent = category["parent_category_ref"]
+            assert _is_generated_reference(parent, categories), (
+                "A sub-category must reference a generated parent"
+            )
+            assert parent is not None
             assert parent["level"] == 1, "A sub-category parent must be level 1"
             assert parent["created_at"] <= category["created_at"], (
                 "A parent category cannot be newer than its child"
@@ -85,17 +93,20 @@ def validate_products(
     sellers: list[Record],
 ) -> None:
     assert len(products) == PRODUCT_COUNT, "Expected 3,000 products"
-    brands_by_id = {brand["brand_id"]: brand for brand in brands}
-    categories_by_id = {category["category_id"]: category for category in categories}
-    sellers_by_id = {seller["seller_id"]: seller for seller in sellers}
 
     for product in products:
-        brand = brands_by_id.get(product["brand_id"])
-        category = categories_by_id.get(product["category_id"])
-        seller = sellers_by_id.get(product["seller_id"])
-        assert brand is not None, "Product has an invalid brand_id"
-        assert category is not None, "Product has an invalid category_id"
-        assert seller is not None, "Product has an invalid seller_id"
+        brand = product["brand_ref"]
+        category = product["category_ref"]
+        seller = product["seller_ref"]
+        assert _is_generated_reference(brand, brands), (
+            "Product must reference a generated brand"
+        )
+        assert _is_generated_reference(category, categories), (
+            "Product must reference a generated category"
+        )
+        assert _is_generated_reference(seller, sellers), (
+            "Product must reference a generated seller"
+        )
         assert category["level"] == 2, "Products should use sub-categories"
         assert product["price"] > 0, "Product price must be positive"
         assert product["stock_qty"] >= 0, "Product stock cannot be negative"
@@ -163,20 +174,22 @@ def validate_promotion_products(
     assert len(promotion_products) == PROMOTION_PRODUCT_COUNT, (
         "Expected 500 promotion-product mappings"
     )
-    promotions_by_id = {
-        promotion["promotion_id"]: promotion for promotion in promotions
-    }
-    products_by_id = {product["product_id"]: product for product in products}
-    used_pairs: set[tuple[int, int]] = set()
+    used_pairs: list[tuple[Record, Record]] = []
 
     for mapping in promotion_products:
-        promotion = promotions_by_id.get(mapping["promotion_id"])
-        product = products_by_id.get(mapping["product_id"])
-        assert promotion is not None, "Promotion-product mapping has an invalid promotion_id"
-        assert product is not None, "Promotion-product mapping has an invalid product_id"
-        pair = (mapping["promotion_id"], mapping["product_id"])
-        assert pair not in used_pairs, "Promotion-product pairs must be unique"
-        used_pairs.add(pair)
+        promotion = mapping["promotion_ref"]
+        product = mapping["product_ref"]
+        assert _is_generated_reference(promotion, promotions), (
+            "Promotion-product mapping must reference a generated promotion"
+        )
+        assert _is_generated_reference(product, products), (
+            "Promotion-product mapping must reference a generated product"
+        )
+        assert not any(
+            used_promotion is promotion and used_product is product
+            for used_promotion, used_product in used_pairs
+        ), "Promotion-product pairs must be unique"
+        used_pairs.append((promotion, product))
 
         campaign_start_end = datetime.combine(
             promotion["start_date"], datetime.max.time()

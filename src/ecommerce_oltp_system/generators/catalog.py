@@ -24,10 +24,9 @@ def generate_brands(fake: Faker) -> list[Record]:
 
     used_names: set[str] = set()
     brands: list[Record] = []
-    for brand_id in range(1, BRAND_COUNT + 1):
+    for _ in range(BRAND_COUNT):
         brands.append(
             {
-                "brand_id": brand_id,
                 "brand_name": _unique_company(fake, used_names),
                 "country": fake.country(),
                 "created_at": fake.date_time_between(
@@ -54,11 +53,10 @@ def generate_categories(fake: Faker) -> list[Record]:
     categories: list[Record] = []
     main_categories: list[Record] = []
 
-    for category_id, category_name in enumerate(CATEGORY_TREE, start=1):
+    for category_name in CATEGORY_TREE:
         category = {
-            "category_id": category_id,
             "category_name": category_name,
-            "parent_category_id": None,
+            "parent_category_ref": None,
             "level": 1,
             "created_at": fake.date_time_between(
                 start_date=WINDOW_START, end_date=WINDOW_END
@@ -67,22 +65,18 @@ def generate_categories(fake: Faker) -> list[Record]:
         categories.append(category)
         main_categories.append(category)
 
-    category_id = MAIN_CATEGORY_COUNT + 1
     for parent in main_categories:
         for category_name in CATEGORY_TREE[parent["category_name"]]:
             categories.append(
                 {
-                    "category_id": category_id,
                     "category_name": category_name,
-                    "parent_category_id": parent["category_id"],
+                    "parent_category_ref": parent,
                     "level": 2,
                     "created_at": fake.date_time_between(
                         start_date=parent["created_at"], end_date=WINDOW_END
                     ),
                 }
             )
-            category_id += 1
-
     return categories
 
 
@@ -91,7 +85,6 @@ def generate_sellers(fake: Faker) -> list[Record]:
 
     return [
         {
-            "seller_id": seller_id,
             "seller_name": fake.company(),
             "join_date": fake.date_between(
                 start_date=WINDOW_START.date(), end_date=WINDOW_END.date()
@@ -103,7 +96,7 @@ def generate_sellers(fake: Faker) -> list[Record]:
             "rating": round(random.uniform(3.0, 5.0), 1),
             "country": "Vietnam",
         }
-        for seller_id in range(1, SELLER_COUNT + 1)
+        for _ in range(SELLER_COUNT)
     ]
 
 
@@ -117,13 +110,12 @@ def generate_products(
 
     subcategories = [category for category in categories if category["level"] == 2]
     return [
-        _generate_product(product_id, fake, brands, subcategories, sellers)
-        for product_id in range(1, PRODUCT_COUNT + 1)
+        _generate_product(fake, brands, subcategories, sellers)
+        for _ in range(PRODUCT_COUNT)
     ]
 
 
 def _generate_product(
-    product_id: int,
     fake: Faker,
     brands: list[Record],
     categories: list[Record],
@@ -142,11 +134,10 @@ def _generate_product(
     )
 
     return {
-        "product_id": product_id,
         "product_name": fake.catch_phrase(),
-        "category_id": category["category_id"],
-        "brand_id": brand["brand_id"],
-        "seller_id": seller["seller_id"],
+        "category_ref": category,
+        "brand_ref": brand,
+        "seller_ref": seller,
         "price": Decimal(str(random.uniform(100_000, 50_000_000))).quantize(
             Decimal("0.01")
         ),

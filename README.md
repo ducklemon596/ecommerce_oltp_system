@@ -23,5 +23,10 @@ generated after products, and promotion-product mappings use only compatible
 products with real generated FK values. Each mapping is unique, is added only
 after its product and promotion exist, and preserves the base product price.
 Products are created no earlier than their brand, category, seller join date,
-and seller `created_at`. Product IDs model the IDs a fresh `SERIAL` database
-load would assign.
+and seller `created_at`.
+
+Primary keys and database foreign-key columns are intentionally not generated
+in Python. In-memory `*_ref` fields preserve the relationships for generation
+and validation only. A future PostgreSQL loader must insert parent rows, read
+their returned `SERIAL`/`IDENTITY` values, and use that mapping to populate
+category, product, and promotion-product foreign keys.

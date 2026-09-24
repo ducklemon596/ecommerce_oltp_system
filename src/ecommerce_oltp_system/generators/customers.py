@@ -21,13 +21,12 @@ def generate_customers(fake: Faker) -> list[Record]:
     used_emails: set[str] = set()
     used_phones: set[str] = set()
     customers: list[Record] = []
-    for customer_id in range(1, CUSTOMER_COUNT + 1):
+    for _ in range(CUSTOMER_COUNT):
         customers.append(
             {
-                "customer_id": customer_id,
                 "customer_name": fake.name(),
                 "email": _unique_value(
-                    lambda: _customer_email(fake, customer_id),
+                    lambda: _customer_email(fake),
                     used_emails,
                     "customer email",
                 ),
@@ -56,8 +55,9 @@ def _unique_value(
     raise ValueError(f"Unable to generate a unique {value_name}")
 
 
-def _customer_email(fake: Faker, customer_id: int) -> str:
+def _customer_email(fake: Faker) -> str:
     """Keep a Faker email realistic while making its local part scalable and unique."""
 
     local_part, domain = fake.email().rsplit("@", maxsplit=1)
-    return f"{local_part}.{customer_id}@{domain}"
+    unique_suffix = str(fake.uuid4()).replace("-", "")[:12]
+    return f"{local_part}.{unique_suffix}@{domain}"

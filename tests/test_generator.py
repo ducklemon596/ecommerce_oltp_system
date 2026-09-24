@@ -1,4 +1,5 @@
 import unittest
+from hashlib import sha256
 from datetime import timedelta
 
 from ecommerce_oltp_system.generator import (
@@ -40,22 +41,82 @@ class GeneratorTests(unittest.TestCase):
         first_run = generate_data(SEED)
         second_run = generate_data(SEED)
 
-        self.assertEqual(first_run, second_run)
+        self.assertEqual(_dataset_fingerprint(first_run), _dataset_fingerprint(second_run))
 
     def test_a_different_seed_changes_the_generated_data(self) -> None:
-        self.assertNotEqual(generate_data(SEED), generate_data(SEED + 1))
+        self.assertNotEqual(
+            _dataset_fingerprint(generate_data(SEED)),
+            _dataset_fingerprint(generate_data(SEED + 1)),
+        )
 
     def test_product_cannot_predate_seller_record(self) -> None:
         data = generate_data()
-        sellers = [seller.copy() for seller in data.sellers]
         product = data.products[0]
-        seller = next(
-            seller for seller in sellers if seller["seller_id"] == product["seller_id"]
-        )
+        seller = product["seller_ref"]
         seller["created_at"] = product["created_at"] + timedelta(seconds=1)
 
         with self.assertRaisesRegex(AssertionError, "Product predates its seller record"):
-            validate_products(data.products, data.brands, data.categories, sellers)
+            validate_products(
+                data.products, data.brands, data.categories, data.sellers
+            )
+
+    def test_records_do_not_include_database_primary_keys(self) -> None:
+        data = generate_data()
+        records = (
+            data.brands
+            + data.categories
+            + data.sellers
+            + data.products
+            + data.customers
+            + data.promotions
+            + data.promotion_products
+        )
+
+        for record in records:
+            self.assertFalse(any(field.endswith("_id") for field in record))
+
+
+def _dataset_fingerprint(data: object) -> str:
+    """Compare generated values and references without database primary keys."""
+
+    dataset = data
+    values = (
+        tuple(_record_values(record) for record in dataset.brands),
+        tuple(_category_values(record) for record in dataset.categories),
+        tuple(_record_values(record) for record in dataset.sellers),
+        tuple(_product_values(record) for record in dataset.products),
+        tuple(_record_values(record) for record in dataset.customers),
+        tuple(_record_values(record) for record in dataset.promotions),
+        tuple(_mapping_values(record) for record in dataset.promotion_products),
+    )
+    return sha256(repr(values).encode()).hexdigest()
+
+
+def _record_values(record: dict) -> tuple:
+    return tuple(
+        sorted((field, value) for field, value in record.items() if not field.endswith("_ref"))
+    )
+
+
+def _category_values(category: dict) -> tuple:
+    parent = category["parent_category_ref"]
+    parent_values = _record_values(parent) if parent is not None else None
+    return _record_values(category) + (("parent_category", parent_values),)
+
+
+def _product_values(product: dict) -> tuple:
+    return _record_values(product) + (
+        ("brand", _record_values(product["brand_ref"])),
+        ("category", _category_values(product["category_ref"])),
+        ("seller", _record_values(product["seller_ref"])),
+    )
+
+
+def _mapping_values(mapping: dict) -> tuple:
+    return _record_values(mapping) + (
+        ("promotion", _record_values(mapping["promotion_ref"])),
+        ("product", _product_values(mapping["product_ref"])),
+    )
 
 
 if __name__ == "__main__":

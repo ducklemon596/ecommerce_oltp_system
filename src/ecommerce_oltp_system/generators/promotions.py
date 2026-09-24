@@ -29,7 +29,7 @@ def generate_promotions(fake: Faker, products: list[Record]) -> list[Record]:
     assert fixed_discounts, "No valid fixed discount is compatible with products"
 
     promotions: list[Record] = []
-    for promotion_id in range(1, PROMOTION_COUNT + 1):
+    for _ in range(PROMOTION_COUNT):
         created_at = fake.date_time_between(start_date=WINDOW_START, end_date=WINDOW_END)
         start_date = fake.date_between(
             start_date=created_at.date(), end_date=WINDOW_END.date()
@@ -43,8 +43,7 @@ def generate_promotions(fake: Faker, products: list[Record]) -> list[Record]:
         )
         promotions.append(
             {
-                "promotion_id": promotion_id,
-                "promotion_name": f"{fake.catch_phrase()} {promotion_id}",
+                "promotion_name": fake.catch_phrase(),
                 "promotion_type": random.choice(PROMOTION_TYPES),
                 "discount_type": discount_type,
                 "discount_value": discount_value,
@@ -63,24 +62,21 @@ def generate_promotion_products(
 
     assert promotions, "Promotions are required before promotion-product mappings"
     assert products, "Products are required before promotion-product mappings"
-    used_pairs: set[tuple[int, int]] = set()
+    candidate_pools = [
+        (promotion, _eligible_products_for_promotion(promotion, products))
+        for promotion in promotions
+    ]
+    if sum(len(candidates) for _, candidates in candidate_pools) < PROMOTION_PRODUCT_COUNT:
+        raise ValueError("Unable to generate 500 valid promotion-product pairs")
+
     mappings: list[Record] = []
 
     while len(mappings) < PROMOTION_PRODUCT_COUNT:
-        promotion = random.choice(promotions)
-        eligible_products = _eligible_products_for_promotion(
-            promotion, products, used_pairs
-        )
-        if not eligible_products:
-            if all(
-                not _eligible_products_for_promotion(candidate, products, used_pairs)
-                for candidate in promotions
-            ):
-                raise ValueError("Unable to generate 500 valid promotion-product pairs")
-            continue
-
-        product = random.choice(eligible_products)
-        pair = (promotion["promotion_id"], product["product_id"])
+        available_pools = [pool for pool in candidate_pools if pool[1]]
+        if not available_pools:
+            raise ValueError("Unable to generate 500 valid promotion-product pairs")
+        promotion, eligible_products = random.choice(available_pools)
+        product = eligible_products.pop(random.randrange(len(eligible_products)))
         earliest_created_at = max(promotion["created_at"], product["created_at"])
         latest_created_at = datetime.combine(promotion["end_date"], datetime.max.time())
         assert earliest_created_at <= latest_created_at, (
@@ -88,21 +84,20 @@ def generate_promotion_products(
         )
         mappings.append(
             {
-                "promo_product_id": len(mappings) + 1,
-                "promotion_id": promotion["promotion_id"],
-                "product_id": product["product_id"],
+                "promotion_ref": promotion,
+                "product_ref": product,
                 "created_at": fake.date_time_between(
                     start_date=earliest_created_at, end_date=latest_created_at
                 ),
             }
         )
-        used_pairs.add(pair)
 
     return mappings
 
 
 def _eligible_products_for_promotion(
-    promotion: Record, products: list[Record], used_pairs: set[tuple[int, int]]
+    promotion: Record,
+    products: list[Record],
 ) -> list[Record]:
     """Return unmapped products that meet the campaign's date and price rules."""
 
@@ -110,8 +105,7 @@ def _eligible_products_for_promotion(
     return [
         product
         for product in products
-        if (promotion["promotion_id"], product["product_id"]) not in used_pairs
-        and product["created_at"] <= campaign_start_end
+        if product["created_at"] <= campaign_start_end
         and (
             promotion["discount_type"] == "percentage"
             or product["price"] >= promotion["discount_value"]
