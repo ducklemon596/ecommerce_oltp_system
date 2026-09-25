@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 from time import perf_counter
 
-from ecommerce_oltp_system.constants import (
+from ecommerce_oltp_system.shared.constants import (
     CREATED_BY,
     MAX_ORDER_ITEM_QUANTITY,
     MAX_ORDER_ITEMS,
@@ -20,13 +20,12 @@ from ecommerce_oltp_system.constants import (
     ORDER_COUNT,
     ORDER_STATUSES,
     ORDERS_PER_FILE,
-    PRODUCT_STOCK_RESERVE,
     SEED,
     WINDOW_END,
 )
-from ecommerce_oltp_system.exporter import csv_value
-from ecommerce_oltp_system.models import Record
-from ecommerce_oltp_system.validators import validate_order, validate_order_items
+from ecommerce_oltp_system.shared.exporter import csv_value
+from ecommerce_oltp_system.shared.models import Record
+from ecommerce_oltp_system.shared.validators import validate_order, validate_order_items
 
 
 ORDER_COLUMNS = (
@@ -77,7 +76,6 @@ class ProductReference:
     product_id: int
     created_at: datetime
     price: Decimal
-    stock_qty: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,31 +123,21 @@ def generate_order_files(
         raise ValueError("customer.csv does not contain any customers")
 
     available_products = sorted(
-        (
-            product
-            for product in products
-            if product.stock_qty > PRODUCT_STOCK_RESERVE
-        ),
+        products,
         key=lambda product: (product.created_at, product.product_id),
     )
     if len(available_products) < MAX_ORDER_ITEMS:
-        raise ValueError(
-            f"At least {MAX_ORDER_ITEMS} products above the stock reserve are required"
-        )
+        raise ValueError(f"At least {MAX_ORDER_ITEMS} products are required")
 
     product_created_at = [product.created_at for product in available_products]
     earliest_fully_eligible_date = product_created_at[MAX_ORDER_ITEMS - 1]
     if earliest_fully_eligible_date > WINDOW_END:
         raise ValueError("Not enough products are available inside the project window")
 
-    remaining_stock = [0] * (max(product.product_id for product in products) + 1)
-    for product in available_products:
-        remaining_stock[product.product_id] = product.stock_qty
     product_validation_records: dict[int, Record] = {
         product.product_id: {
             "created_at": product.created_at,
             "price": product.price,
-            "stock_qty": product.stock_qty,
         }
         for product in available_products
     }
@@ -174,7 +162,6 @@ def generate_order_files(
             customers=customers,
             products=available_products,
             product_created_at=product_created_at,
-            remaining_stock=remaining_stock,
             earliest_fully_eligible_date=earliest_fully_eligible_date,
             product_validation_records=product_validation_records,
             first_expected_order_id=first_expected_order_id,
@@ -230,14 +217,13 @@ def load_product_references(csv_path: str | Path) -> list[ProductReference]:
         _require_columns(
             path,
             reader.fieldnames,
-            {"created_at", "price", "stock_qty"},
+            {"created_at", "price"},
         )
         return [
             ProductReference(
                 product_id=product_id,
                 created_at=datetime.fromisoformat(row["created_at"]),
                 price=Decimal(row["price"]),
-                stock_qty=int(row["stock_qty"]),
             )
             for product_id, row in enumerate(reader, start=1)
         ]
@@ -249,7 +235,6 @@ def _write_part(
     customers: list[CustomerReference],
     products: list[ProductReference],
     product_created_at: list[datetime],
-    remaining_stock: list[int],
     earliest_fully_eligible_date: datetime,
     product_validation_records: dict[int, Record],
     first_expected_order_id: int,
@@ -289,7 +274,7 @@ def _write_part(
             total_amount = Decimal("0")
             for product_index in selected_indices:
                 product = products[product_index]
-                quantity = _take_stock_quantity(rng, product, remaining_stock)
+                quantity = rng.randint(1, MAX_ORDER_ITEM_QUANTITY)
                 subtotal = product.price * quantity
                 total_amount += subtotal
                 item_records.append(
@@ -318,7 +303,6 @@ def _write_part(
                 expected_order_id,
                 order_date,
                 product_validation_records,
-                remaining_stock,
             )
             validate_order(order_record, item_records, customer.created_at)
 
@@ -331,26 +315,6 @@ def _write_part(
     return part_item_count
 
 
-def _take_stock_quantity(
-    rng: random.Random,
-    product: ProductReference,
-    remaining_stock: list[int],
-) -> int:
-    """Take units while retaining safety stock, replenishing when required."""
-
-    product_stock = remaining_stock[product.product_id]
-    if product_stock <= PRODUCT_STOCK_RESERVE:
-        product_stock = product.stock_qty
-
-    quantity = rng.randint(
-        1,
-        min(
-            MAX_ORDER_ITEM_QUANTITY,
-            product_stock - PRODUCT_STOCK_RESERVE,
-        ),
-    )
-    remaining_stock[product.product_id] = product_stock - quantity
-    return quantity
 
 
 def _audit_fields(created_at: datetime) -> Record:

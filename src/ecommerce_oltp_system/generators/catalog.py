@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from faker import Faker
 
-from ecommerce_oltp_system.constants import (
+from ecommerce_oltp_system.shared.constants import (
     BRAND_COUNT,
     CATEGORY_TREE,
     CREATED_BY,
@@ -17,7 +17,7 @@ from ecommerce_oltp_system.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.models import Record
+from ecommerce_oltp_system.shared.models import Record
 
 
 def generate_brands(fake: Faker) -> list[Record]:

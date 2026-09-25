@@ -59,10 +59,6 @@ uv run ecommerce-generate-orders --orders 500000 --orders-per-file 50000
 
 Use `--output-dir` to write the generated folders somewhere other than `data`.
 The command reports per-part and aggregate elapsed time and throughput. Expected
-order IDs continue globally across parts. Remaining stock is tracked across all
-parts and every sale leaves a one-unit reserve. Since the original inventory is
-far smaller than the benchmark demand, a product is replenished to its original
-`stock_qty` before a later order would consume that reserve.
 
 Run the tests:
 

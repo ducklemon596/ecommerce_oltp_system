@@ -5,7 +5,7 @@ from typing import Callable
 
 from faker import Faker
 
-from ecommerce_oltp_system.constants import (
+from ecommerce_oltp_system.shared.constants import (
     CREATED_BY,
     CUSTOMER_COUNT,
     GENDERS,
@@ -13,7 +13,7 @@ from ecommerce_oltp_system.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.models import Record
+from ecommerce_oltp_system.shared.models import Record
 
 
 def generate_customers(fake: Faker) -> list[Record]:

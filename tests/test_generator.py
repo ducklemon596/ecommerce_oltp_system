@@ -2,7 +2,7 @@ import unittest
 from hashlib import sha256
 from datetime import timedelta
 
-from ecommerce_oltp_system.generator import (
+from ecommerce_oltp_system.generators.pipeline import (
     CUSTOMER_COUNT,
     PRODUCT_COUNT,
     PROMOTION_COUNT,

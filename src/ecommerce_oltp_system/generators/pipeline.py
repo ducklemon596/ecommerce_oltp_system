@@ -5,7 +5,7 @@ from pathlib import Path
 
 from faker import Faker
 
-from ecommerce_oltp_system.constants import (
+from ecommerce_oltp_system.shared.constants import (
     BRAND_COUNT,
     CATEGORY_TREE,
     CUSTOMER_COUNT,
@@ -28,7 +28,7 @@ from ecommerce_oltp_system.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.exporter import write_data_files
+from ecommerce_oltp_system.shared.exporter import write_data_files
 from ecommerce_oltp_system.generators.catalog import (
     generate_brands,
     generate_categories,
@@ -44,8 +44,8 @@ from ecommerce_oltp_system.generators.promotions import (
     generate_promotion_products,
     generate_promotions,
 )
-from ecommerce_oltp_system.models import GeneratedData, Record
-from ecommerce_oltp_system.validators import (
+from ecommerce_oltp_system.shared.models import GeneratedData, Record
+from ecommerce_oltp_system.shared.validators import (
     validate_brands,
     validate_categories,
     validate_customers,

@@ -1,10 +1,10 @@
 """Validation rules for the complete in-memory synthetic dataset."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 
-from ecommerce_oltp_system.constants import (
+from ecommerce_oltp_system.shared.constants import (
     BRAND_COUNT,
     CREATED_BY,
     CUSTOMER_COUNT,
@@ -16,7 +16,6 @@ from ecommerce_oltp_system.constants import (
     MIN_ORDER_ITEMS,
     ORDER_STATUSES,
     PRODUCT_COUNT,
-    PRODUCT_STOCK_RESERVE,
     PROMOTION_COUNT,
     PROMOTION_PRODUCT_COUNT,
     PROMOTION_TYPES,
@@ -26,7 +25,7 @@ from ecommerce_oltp_system.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.models import Record
+from ecommerce_oltp_system.shared.models import Record
 
 
 def _validate_unique_field(records: list[Record], field: str) -> None:
@@ -269,7 +268,6 @@ def validate_order_items(
     expected_order_id: int,
     order_date: datetime,
     product_references: Mapping[int, Record],
-    remaining_stock: Sequence[int],
 ) -> None:
     """Validate the small item collection for one streamed order."""
 
@@ -315,13 +313,4 @@ def validate_order_items(
         )
         assert item["created_at"] <= WINDOW_END, (
             "Order item created_at is outside the generation window"
-        )
-
-        stock_qty = product["stock_qty"]
-        stock_after_order = remaining_stock[product_id]
-        assert PRODUCT_STOCK_RESERVE <= stock_after_order <= stock_qty, (
-            "Product remaining stock is outside its valid range"
-        )
-        assert stock_after_order + item["quantity"] <= stock_qty, (
-            "Order item consumes more than the available product stock"
         )

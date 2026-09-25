@@ -3,10 +3,10 @@
 import argparse
 from pathlib import Path
 
-from .constants import ORDER_COUNT, ORDERS_PER_FILE, SEED
-from .generator import generate_all_files, generate_and_write_data
 from .generators.orders import print_summary
-from .models import GeneratedData
+from .generators.pipeline import generate_all_files, generate_and_write_data
+from .shared.constants import ORDER_COUNT, ORDERS_PER_FILE, SEED
+from .shared.models import GeneratedData
 
 
 def _arguments() -> argparse.Namespace:
