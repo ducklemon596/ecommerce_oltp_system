@@ -44,10 +44,12 @@ def write_data_files(
 
 
 def _csv_record(record: Record) -> Record:
-    return {field: _csv_value(value) for field, value in record.items()}
+    return {field: csv_value(value) for field, value in record.items()}
 
 
-def _csv_value(value: object) -> object:
+def csv_value(value: object) -> object:
+    """Convert an in-memory value to the project's CSV representation."""
+
     if value is None:
         return ""
     if isinstance(value, bool):

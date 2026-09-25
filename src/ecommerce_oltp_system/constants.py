@@ -16,12 +16,26 @@ PRODUCT_COUNT = 3_000
 CUSTOMER_COUNT = 30_000
 PROMOTION_COUNT = 30
 PROMOTION_PRODUCT_COUNT = 500
+ORDER_COUNT = 5_000_000
+ORDERS_PER_FILE = 100_000
+MIN_ORDER_ITEMS = 2
+MAX_ORDER_ITEMS = 5
+MAX_ORDER_ITEM_QUANTITY = 5
+PRODUCT_STOCK_RESERVE = 1
 CREATED_BY = "faker_batch"
 
 SELLER_TYPES = ("Official", "Marketplace")
 GENDERS = ("Male", "Female")
 PROMOTION_TYPES = ("product", "flash_sale")
 DISCOUNT_TYPES = ("percentage", "fixed_amount")
+ORDER_STATUSES = (
+    "PLACED",
+    "PAID",
+    "SHIPPED",
+    "DELIVERED",
+    "CANCELLED",
+    "RETURNED",
+)
 PERCENTAGE_DISCOUNTS = tuple(
     Decimal(value) for value in (5, 10, 15, 20, 25, 30, 40, 50)
 )

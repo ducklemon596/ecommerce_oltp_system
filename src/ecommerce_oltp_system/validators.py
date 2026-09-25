@@ -1,5 +1,6 @@
 """Validation rules for the complete in-memory synthetic dataset."""
 
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -9,8 +10,13 @@ from ecommerce_oltp_system.constants import (
     CUSTOMER_COUNT,
     DISCOUNT_TYPES,
     GENDERS,
+    MAX_ORDER_ITEM_QUANTITY,
+    MAX_ORDER_ITEMS,
     MAIN_CATEGORY_COUNT,
+    MIN_ORDER_ITEMS,
+    ORDER_STATUSES,
     PRODUCT_COUNT,
+    PRODUCT_STOCK_RESERVE,
     PROMOTION_COUNT,
     PROMOTION_PRODUCT_COUNT,
     PROMOTION_TYPES,
@@ -223,3 +229,99 @@ def validate_promotion_products(
             final_price = product["price"] - promotion["discount_value"]
             assert promotion["discount_value"] <= product["price"]
         assert final_price >= 0, "Promotion creates a negative product price"
+
+
+def validate_order(
+    order: Record,
+    order_items: list[Record],
+    customer_created_at: datetime,
+) -> None:
+    """Validate one streamed order and its calculated total."""
+
+    assert "order_id" not in order, "order_id must remain database-managed"
+    _validate_audit_fields([order])
+    assert order["customer_id"] > 0, "Invalid customer_id"
+    assert WINDOW_START <= order["order_date"] <= WINDOW_END, (
+        "Order date is outside the generation window"
+    )
+    assert customer_created_at <= order["order_date"], (
+        "Order predates its customer"
+    )
+    assert order["status"] in ORDER_STATUSES, "Invalid order status"
+    assert order["created_at"] >= order["order_date"], (
+        "Order created_at predates order_date"
+    )
+    assert order["created_at"] <= WINDOW_END, (
+        "Order created_at is outside the generation window"
+    )
+    expected_total = sum(
+        (item["subtotal"] for item in order_items),
+        start=Decimal("0"),
+    )
+    assert order["total_amount"] == expected_total, (
+        "Order total does not equal its item subtotals"
+    )
+    assert order["total_amount"] >= 0, "Order total cannot be negative"
+
+
+def validate_order_items(
+    order_items: list[Record],
+    expected_order_id: int,
+    order_date: datetime,
+    product_references: Mapping[int, Record],
+    remaining_stock: Sequence[int],
+) -> None:
+    """Validate the small item collection for one streamed order."""
+
+    assert MIN_ORDER_ITEMS <= len(order_items) <= MAX_ORDER_ITEMS, (
+        "An order must contain 2 to 5 items"
+    )
+    _validate_audit_fields(order_items)
+    used_product_ids: set[int] = set()
+
+    for item in order_items:
+        assert "order_item_id" not in item, (
+            "order_item_id must remain database-managed"
+        )
+        assert item["order_id"] == expected_order_id, (
+            "Order item references the wrong expected order_id"
+        )
+        product_id = item["product_id"]
+        assert product_id in product_references, "Invalid product_id"
+        assert product_id not in used_product_ids, (
+            "Products must be unique within an order"
+        )
+        used_product_ids.add(product_id)
+
+        product = product_references[product_id]
+        assert item["order_date"] == order_date, (
+            "Order item order_date differs from its order"
+        )
+        assert product["created_at"] <= order_date, (
+            "Order item predates its product"
+        )
+        assert 0 < item["quantity"] <= MAX_ORDER_ITEM_QUANTITY, (
+            "Order item quantity is outside the allowed range"
+        )
+        assert item["unit_price"] == product["price"], (
+            "Order item unit_price differs from its product price"
+        )
+        assert item["unit_price"] > 0, "Order item unit_price must be positive"
+        assert item["subtotal"] == item["quantity"] * item["unit_price"], (
+            "Order item subtotal is incorrect"
+        )
+        assert item["created_at"] >= order_date, (
+            "Order item created_at predates order_date"
+        )
+        assert item["created_at"] <= WINDOW_END, (
+            "Order item created_at is outside the generation window"
+        )
+
+        stock_qty = product["stock_qty"]
+        stock_after_order = remaining_stock[product_id]
+        assert PRODUCT_STOCK_RESERVE <= stock_after_order <= stock_qty, (
+            "Product remaining stock is outside its valid range"
+        )
+        assert stock_after_order + item["quantity"] <= stock_qty, (
+            "Order item consumes more than the available product stock"
+        )

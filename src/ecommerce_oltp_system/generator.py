@@ -14,6 +14,8 @@ from ecommerce_oltp_system.constants import (
     GENDERS,
     MAIN_CATEGORY_COUNT,
     MAX_UNIQUE_VALUE_ATTEMPTS,
+    ORDER_COUNT,
+    ORDERS_PER_FILE,
     PRODUCT_COUNT,
     PROMOTION_TYPES,
     PROMOTION_COUNT,
@@ -34,6 +36,10 @@ from ecommerce_oltp_system.generators.catalog import (
     generate_sellers,
 )
 from ecommerce_oltp_system.generators.customers import generate_customers
+from ecommerce_oltp_system.generators.orders import (
+    OrderGenerationStats,
+    generate_order_files,
+)
 from ecommerce_oltp_system.generators.promotions import (
     generate_promotion_products,
     generate_promotions,
@@ -43,6 +49,8 @@ from ecommerce_oltp_system.validators import (
     validate_brands,
     validate_categories,
     validate_customers,
+    validate_order,
+    validate_order_items,
     validate_products,
     validate_promotion_products,
     validate_promotions,
@@ -58,6 +66,9 @@ __all__ = [
     "GENDERS",
     "MAIN_CATEGORY_COUNT",
     "MAX_UNIQUE_VALUE_ATTEMPTS",
+    "ORDER_COUNT",
+    "ORDERS_PER_FILE",
+    "OrderGenerationStats",
     "PERCENTAGE_DISCOUNTS",
     "PRODUCT_COUNT",
     "PROMOTION_COUNT",
@@ -75,6 +86,7 @@ __all__ = [
     "generate_categories",
     "generate_customers",
     "generate_data",
+    "generate_all_files",
     "generate_and_write_data",
     "generate_products",
     "generate_promotion_products",
@@ -84,6 +96,8 @@ __all__ = [
     "validate_categories",
     "validate_customers",
     "validate_products",
+    "validate_order",
+    "validate_order_items",
     "validate_promotion_products",
     "validate_promotions",
     "validate_sellers",
@@ -135,3 +149,35 @@ def generate_and_write_data(
     data = generate_data(seed)
     paths = write_data_files(data, output_dir)
     return data, paths
+
+
+def generate_all_files(
+    seed: int = SEED,
+    output_dir: str | Path = "data",
+    order_count: int = ORDER_COUNT,
+    orders_per_file: int = ORDERS_PER_FILE,
+    show_progress: bool = True,
+) -> tuple[dict[str, int], list[Path], OrderGenerationStats]:
+    """Generate all nine tables, streaming the two high-volume datasets."""
+
+    data, paths = generate_and_write_data(seed, output_dir)
+    table_counts = {
+        "brand": len(data.brands),
+        "category": len(data.categories),
+        "seller": len(data.sellers),
+        "product": len(data.products),
+        "customer": len(data.customers),
+        "promotion": len(data.promotions),
+        "promotion_product": len(data.promotion_products),
+    }
+    del data
+
+    order_stats = generate_order_files(
+        data_dir=output_dir,
+        output_dir=output_dir,
+        order_count=order_count,
+        orders_per_file=orders_per_file,
+        seed=seed,
+        show_progress=show_progress,
+    )
+    return table_counts, paths, order_stats

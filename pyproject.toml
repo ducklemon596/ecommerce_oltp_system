@@ -14,7 +14,10 @@ dependencies = [
 
 [project.scripts]
 ecommerce-oltp-system = "ecommerce_oltp_system:main"
+ecommerce-load-data = "ecommerce_oltp_system.loader:main"
+ecommerce-generate-orders = "ecommerce_oltp_system.generators.orders:main"
 
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]
+ecommerce-generate = "ecommerce_oltp_system.generate:main"
 build-backend = "uv_build"
