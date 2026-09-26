@@ -11,6 +11,10 @@ from ecommerce_oltp_system.shared.constants import (
     CATEGORY_TREE,
     CREATED_BY,
     MAIN_CATEGORY_COUNT,
+    PRE_WINDOW_END,
+    PRE_WINDOW_PRODUCT_SHARE,
+    PRE_WINDOW_START,
+    PRODUCT_ROLLOUT_END,
     PRODUCT_COUNT,
     SELLER_COUNT,
     SELLER_TYPES,
@@ -32,7 +36,7 @@ def generate_brands(fake: Faker) -> list[Record]:
                 "brand_name": _unique_company(fake, used_names),
                 "country": fake.country(),
                 "created_at": fake.date_time_between(
-                    start_date=WINDOW_START, end_date=WINDOW_END
+                    start_date=PRE_WINDOW_START, end_date=PRE_WINDOW_END
                 ),
                 **_audit_fields(),
             }
@@ -61,7 +65,7 @@ def generate_categories(fake: Faker) -> list[Record]:
             "parent_category_id": None,
             "level": 1,
             "created_at": fake.date_time_between(
-                start_date=WINDOW_START, end_date=WINDOW_END
+                start_date=PRE_WINDOW_START, end_date=PRE_WINDOW_END
             ),
             **_audit_fields(),
         }
@@ -78,7 +82,7 @@ def generate_categories(fake: Faker) -> list[Record]:
                     "parent_category_id": parent_category_id,
                     "level": 2,
                     "created_at": fake.date_time_between(
-                        start_date=parent["created_at"], end_date=WINDOW_END
+                        start_date=parent["created_at"], end_date=PRE_WINDOW_END
                     ),
                     **_audit_fields(),
                 }
@@ -90,23 +94,27 @@ def generate_categories(fake: Faker) -> list[Record]:
 def generate_sellers(fake: Faker) -> list[Record]:
     """Generate Vietnam-based sellers independent of product generation."""
 
-    return [
-        {
-            "seller_code": f"SEL-{position:05d}",
-            "seller_name": fake.company(),
-            "join_date": fake.date_between(
-                start_date=WINDOW_START.date(), end_date=WINDOW_END.date()
-            ),
-            "created_at": fake.date_time_between(
-                start_date=WINDOW_START, end_date=WINDOW_END
-            ),
-            "seller_type": random.choice(SELLER_TYPES),
-            "rating": round(random.uniform(3.0, 5.0), 1),
-            "country": "Vietnam",
-            **_audit_fields(),
-        }
-        for position in range(1, SELLER_COUNT + 1)
-    ]
+    sellers: list[Record] = []
+    for position in range(1, SELLER_COUNT + 1):
+        join_date = fake.date_between(
+            start_date=PRE_WINDOW_START.date(), end_date=PRE_WINDOW_END.date()
+        )
+        sellers.append(
+            {
+                "seller_code": f"SEL-{position:05d}",
+                "seller_name": fake.company(),
+                "join_date": join_date,
+                "created_at": fake.date_time_between(
+                    start_date=datetime.combine(join_date, datetime.min.time()),
+                    end_date=PRE_WINDOW_END,
+                ),
+                "seller_type": random.choice(SELLER_TYPES),
+                "rating": round(random.uniform(3.0, 5.0), 1),
+                "country": "Vietnam",
+                **_audit_fields(),
+            }
+        )
+    return sellers
 
 
 def generate_products(
@@ -140,7 +148,7 @@ def _generate_product(
     seller = sellers[seller_id - 1]
     seller_join_datetime = datetime.combine(seller["join_date"], datetime.min.time())
     earliest_created_at = max(
-        WINDOW_START,
+        PRE_WINDOW_START,
         brand["created_at"],
         category["created_at"],
         seller_join_datetime,
@@ -159,7 +167,12 @@ def _generate_product(
         "stock_qty": random.randint(0, 500),
         "rating": round(random.uniform(3.0, 5.0), 1),
         "created_at": fake.date_time_between(
-            start_date=earliest_created_at, end_date=WINDOW_END
+            start_date=earliest_created_at,
+            end_date=(
+                PRE_WINDOW_END
+                if random.random() < PRE_WINDOW_PRODUCT_SHARE
+                else PRODUCT_ROLLOUT_END
+            ),
         ),
         "is_active": random.choice((True, False)),
         **_audit_fields(),

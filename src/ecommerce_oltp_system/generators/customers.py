@@ -22,9 +22,10 @@ def generate_customers(fake: Faker) -> list[Record]:
     used_emails: set[str] = set()
     used_phones: set[str] = set()
     customers: list[Record] = []
-    for _ in range(CUSTOMER_COUNT):
+    for position in range(1, CUSTOMER_COUNT + 1):
         customers.append(
             {
+                "customer_code": f"CUS-{position:06d}",
                 "customer_name": fake.name(),
                 "email": _unique_value(
                     lambda: _customer_email(fake),

@@ -2,9 +2,8 @@
 
 This version generates and validates `brand`, `category`, `seller`, `product`,
 `customer`, `promotion`, and `promotion_product`, writes each table to CSV, and
-can create and load their PostgreSQL schema. A separate streaming benchmark
-generates `order` and `order_item` CSV parts; PostgreSQL loading for those two
-tables is intentionally not implemented yet.
+streams `order` and `order_item` into CSV parts. The loader creates the complete
+PostgreSQL schema and loads all nine tables.
 
 Generate all nine tables with one deterministic command:
 
@@ -68,7 +67,7 @@ uv run python -m unittest discover -s tests
 
 The generator uses seed `42`. Stable business keys use the forms `BRD-00001`,
 `CAT-00001`, `SEL-00001`, `PRD-000001`, and `PRO-00001`. PostgreSQL-managed
-primary keys are absent from the files.
+primary keys are absent from the files. Orders use `ORD-000000001` and later codes.
 
 Integer foreign keys are based on expected PostgreSQL IDs:
 
@@ -89,7 +88,7 @@ CSV because PostgreSQL sets it when the row is loaded.
 ## PostgreSQL schema and loading
 
 Copy the safe template to a local configuration file, set your PostgreSQL values,
-then create the schema and load all seven files:
+then create the schema and load the complete dataset:
 
 ```bash
 cp database.ini.example database.ini
@@ -100,10 +99,10 @@ uv run ecommerce-load-data
 The default section is `[postgresql]`; `port` is optional. The actual
 `database.ini` is ignored by Git to protect credentials.
 
-The schema is defined in `src/ecommerce_oltp_system/sql/schema.sql`. To create
-only the tables, use `uv run ecommerce-load-data --schema-only`. To load into an
-already-created schema, use `uv run ecommerce-load-data --skip-schema`. A custom
-CSV directory can be supplied with `--data-dir`.
+The schema is defined in `src/ecommerce_oltp_system/loader/sql/schema.sql`. To
+create only the tables, use `uv run ecommerce-load-data --schema-only`. To load
+into an already-created schema, use `uv run ecommerce-load-data --skip-schema`.
+A custom CSV directory can be supplied with `--data-dir`.
 
 Files load in dependency order: `brand`, `category`, `seller`, `customer`,
 `product`, `promotion`, then `promotion_product`. Each file is one transaction.

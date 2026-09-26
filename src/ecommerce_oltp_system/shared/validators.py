@@ -15,6 +15,9 @@ from ecommerce_oltp_system.shared.constants import (
     MAIN_CATEGORY_COUNT,
     MIN_ORDER_ITEMS,
     ORDER_STATUSES,
+    PRE_WINDOW_END,
+    PRE_WINDOW_START,
+    PRODUCT_ROLLOUT_END,
     PRODUCT_COUNT,
     PROMOTION_COUNT,
     PROMOTION_PRODUCT_COUNT,
@@ -52,7 +55,7 @@ def validate_brands(brands: list[Record]) -> None:
         "Brand names must be unique"
     )
     for brand in brands:
-        assert WINDOW_START <= brand["created_at"] <= WINDOW_END, (
+        assert PRE_WINDOW_START <= brand["created_at"] <= PRE_WINDOW_END, (
             "Brand created_at is outside the generation window"
         )
 
@@ -76,7 +79,7 @@ def validate_categories(categories: list[Record]) -> None:
     main_category_ids = set(range(1, MAIN_CATEGORY_COUNT + 1))
 
     for category in categories:
-        assert WINDOW_START <= category["created_at"] <= WINDOW_END, (
+        assert PRE_WINDOW_START <= category["created_at"] <= PRE_WINDOW_END, (
             "Category created_at is outside the generation window"
         )
         if category["level"] == 1:
@@ -100,11 +103,14 @@ def validate_sellers(sellers: list[Record]) -> None:
         assert seller["seller_type"] in SELLER_TYPES, "Invalid seller type"
         assert 0 <= seller["rating"] <= 5, "Seller rating must be between 0 and 5"
         assert seller["country"] == "Vietnam", "Seller country must be Vietnam"
-        assert WINDOW_START.date() <= seller["join_date"] <= WINDOW_END.date(), (
+        assert PRE_WINDOW_START.date() <= seller["join_date"] <= PRE_WINDOW_END.date(), (
             "Seller join_date is outside the generation window"
         )
-        assert WINDOW_START <= seller["created_at"] <= WINDOW_END, (
+        assert PRE_WINDOW_START <= seller["created_at"] <= PRE_WINDOW_END, (
             "Seller created_at is outside the generation window"
+        )
+        assert datetime.combine(seller["join_date"], datetime.min.time()) <= seller["created_at"], (
+            "Seller record predates its join date"
         )
 
 
@@ -130,7 +136,7 @@ def validate_products(
         assert product["price"] > 0, "Product price must be positive"
         assert product["stock_qty"] >= 0, "Product stock cannot be negative"
         assert 0 <= product["rating"] <= 5, "Product rating must be between 0 and 5"
-        assert WINDOW_START <= product["created_at"] <= WINDOW_END, (
+        assert PRE_WINDOW_START <= product["created_at"] <= PRODUCT_ROLLOUT_END, (
             "Product created_at is outside the generation window"
         )
         assert brand["created_at"] <= product["created_at"], (
@@ -151,6 +157,7 @@ def validate_products(
 def validate_customers(customers: list[Record]) -> None:
     assert len(customers) == CUSTOMER_COUNT, "Expected 30,000 customers"
     _validate_audit_fields(customers)
+    _validate_unique_field(customers, "customer_code")
     assert len({customer["email"] for customer in customers}) == CUSTOMER_COUNT, (
         "Customer emails must be unique"
     )
@@ -197,6 +204,7 @@ def validate_promotion_products(
         "Expected 500 promotion-product mappings"
     )
     _validate_audit_fields(promotion_products)
+    _validate_unique_field(promotion_products, "promotion_product_code")
     used_pairs: set[tuple[int, int]] = set()
 
     for mapping in promotion_products:
@@ -239,6 +247,8 @@ def validate_order(
 
     assert "order_id" not in order, "order_id must remain database-managed"
     _validate_audit_fields([order])
+    assert order["order_code"].startswith("ORD-"), "Invalid order_code"
+    assert order["order_code"][4:].isdigit(), "Invalid order_code"
     assert order["customer_id"] > 0, "Invalid customer_id"
     assert WINDOW_START <= order["order_date"] <= WINDOW_END, (
         "Order date is outside the generation window"
@@ -274,6 +284,7 @@ def validate_order_items(
     assert MIN_ORDER_ITEMS <= len(order_items) <= MAX_ORDER_ITEMS, (
         "An order must contain 2 to 5 items"
     )
+    order_item_codes: set[str] = set()
     _validate_audit_fields(order_items)
     used_product_ids: set[int] = set()
 
@@ -281,6 +292,13 @@ def validate_order_items(
         assert "order_item_id" not in item, (
             "order_item_id must remain database-managed"
         )
+        expected_code_prefix = f"OIT-{expected_order_id:09d}-"
+        order_item_code = item["order_item_code"]
+        assert order_item_code.startswith(expected_code_prefix), "Invalid order_item_code"
+        assert order_item_code[len(expected_code_prefix):].isdigit(), "Invalid order_item_code"
+        assert order_item_code not in order_item_codes, "Duplicate order_item_code"
+        order_item_codes.add(order_item_code)
+
         assert item["order_id"] == expected_order_id, (
             "Order item references the wrong expected order_id"
         )

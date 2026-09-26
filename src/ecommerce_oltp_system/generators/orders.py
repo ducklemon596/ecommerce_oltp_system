@@ -18,6 +18,10 @@ from ecommerce_oltp_system.shared.constants import (
     MAX_ORDER_ITEMS,
     MIN_ORDER_ITEMS,
     ORDER_COUNT,
+    ORDER_STATUS_WEIGHTS,
+    PARETO_ACTIVITY_SHARE,
+    PARETO_HEAD_SHARE,
+    WINDOW_START,
     ORDER_STATUSES,
     ORDERS_PER_FILE,
     SEED,
@@ -30,6 +34,7 @@ from ecommerce_oltp_system.shared.validators import validate_order, validate_ord
 
 ORDER_COLUMNS = (
     "customer_id",
+    "order_code",
     "order_date",
     "status",
     "total_amount",
@@ -45,6 +50,7 @@ ORDER_COLUMNS = (
 
 ORDER_ITEM_COLUMNS = (
     "order_id",
+    "order_item_code",
     "product_id",
     "order_date",
     "quantity",
@@ -79,9 +85,20 @@ class ProductReference:
 
 
 @dataclass(frozen=True, slots=True)
-class OrderGenerationStats:
-    """Aggregate timing and output counts from one generation run."""
+class ParetoReferencePool:
+    """Creation-time-sorted records split into a preferential 20% head."""
 
+    records: tuple[CustomerReference | ProductReference, ...]
+    record_dates: tuple[datetime, ...]
+    head: tuple[CustomerReference | ProductReference, ...]
+    head_dates: tuple[datetime, ...]
+    tail: tuple[CustomerReference | ProductReference, ...]
+    tail_dates: tuple[datetime, ...]
+
+@dataclass(frozen=True, slots=True)
+class OrderGenerationStats:
+
+    """Aggregate timing and output counts from one generation run."""
     orders: int
     order_items: int
     elapsed_seconds: float
@@ -121,6 +138,7 @@ def generate_order_files(
     products = load_product_references(source_dir / "product.csv")
     if not customers:
         raise ValueError("customer.csv does not contain any customers")
+    customer_pool = _pareto_pool(customers)
 
     available_products = sorted(
         products,
@@ -129,10 +147,14 @@ def generate_order_files(
     if len(available_products) < MAX_ORDER_ITEMS:
         raise ValueError(f"At least {MAX_ORDER_ITEMS} products are required")
 
+    product_pool = _pareto_pool(available_products)
     product_created_at = [product.created_at for product in available_products]
     earliest_fully_eligible_date = product_created_at[MAX_ORDER_ITEMS - 1]
     if earliest_fully_eligible_date > WINDOW_END:
         raise ValueError("Not enough products are available inside the project window")
+    order_window_start = max(
+        WINDOW_START, customer_pool.record_dates[0], earliest_fully_eligible_date
+    )
 
     product_validation_records: dict[int, Record] = {
         product.product_id: {
@@ -159,10 +181,10 @@ def generate_order_files(
         part_started_at = perf_counter()
         part_item_count = _write_part(
             rng=rng,
-            customers=customers,
-            products=available_products,
-            product_created_at=product_created_at,
-            earliest_fully_eligible_date=earliest_fully_eligible_date,
+            customer_pool=customer_pool,
+            product_pool=product_pool,
+            order_window_start=order_window_start,
+            total_order_count=order_count,
             product_validation_records=product_validation_records,
             first_expected_order_id=first_expected_order_id,
             order_count=part_order_count,
@@ -232,10 +254,10 @@ def load_product_references(csv_path: str | Path) -> list[ProductReference]:
 def _write_part(
     *,
     rng: random.Random,
-    customers: list[CustomerReference],
-    products: list[ProductReference],
-    product_created_at: list[datetime],
-    earliest_fully_eligible_date: datetime,
+    customer_pool: ParetoReferencePool,
+    product_pool: ParetoReferencePool,
+    order_window_start: datetime,
+    total_order_count: int,
     product_validation_records: dict[int, Record],
     first_expected_order_id: int,
     order_count: int,
@@ -261,42 +283,43 @@ def _write_part(
         for expected_order_id in range(
             first_expected_order_id, final_expected_order_id
         ):
-            customer = customers[rng.randrange(len(customers))]
-            earliest_order_date = max(
-                customer.created_at, earliest_fully_eligible_date
+            order_date = _evenly_distributed_order_date(
+                rng, expected_order_id, total_order_count, order_window_start
             )
-            order_date = _random_datetime(rng, earliest_order_date, WINDOW_END)
-            eligible_product_count = bisect_right(product_created_at, order_date)
+            customer = _choose_pareto_reference(rng, customer_pool, order_date)
             item_count = rng.randint(MIN_ORDER_ITEMS, MAX_ORDER_ITEMS)
-            selected_indices = rng.sample(range(eligible_product_count), item_count)
+            selected_products = _select_pareto_products(
+                rng, product_pool, order_date, item_count
+            )
 
             item_records: list[Record] = []
             total_amount = Decimal("0")
-            for product_index in selected_indices:
-                product = products[product_index]
+            for item_position, product in enumerate(selected_products, start=1):
                 quantity = rng.randint(1, MAX_ORDER_ITEM_QUANTITY)
                 subtotal = product.price * quantity
                 total_amount += subtotal
                 item_records.append(
                     {
                         "order_id": expected_order_id,
+                        "order_item_code": (
+                            f"OIT-{expected_order_id:09d}-{item_position:02d}"
+                        ),
                         "product_id": product.product_id,
                         "order_date": order_date,
                         "quantity": quantity,
                         "unit_price": product.price,
                         "subtotal": subtotal,
-                        **_audit_fields(
-                            _random_datetime(rng, order_date, WINDOW_END)
-                        ),
+                        **_audit_fields(_order_created_at(rng, order_date)),
                     }
                 )
 
             order_record: Record = {
                 "customer_id": customer.customer_id,
+                "order_code": f"ORD-{expected_order_id:09d}",
                 "order_date": order_date,
-                "status": rng.choice(ORDER_STATUSES),
+                "status": _weighted_order_status(rng),
                 "total_amount": total_amount,
-                **_audit_fields(_random_datetime(rng, order_date, WINDOW_END)),
+                **_audit_fields(_order_created_at(rng, order_date)),
             }
             validate_order_items(
                 item_records,
@@ -315,6 +338,99 @@ def _write_part(
     return part_item_count
 
 
+
+def _pareto_pool(
+    records: list[CustomerReference] | list[ProductReference],
+) -> ParetoReferencePool:
+    ordered = tuple(sorted(records, key=lambda record: (record.created_at, record.customer_id if isinstance(record, CustomerReference) else record.product_id)))
+    head_size = max(1, int(len(ordered) * PARETO_HEAD_SHARE))
+    head = tuple(
+        record for record in ordered
+        if (record.customer_id if isinstance(record, CustomerReference) else record.product_id) <= head_size
+    )
+    head_records = set(head)
+    tail = tuple(record for record in ordered if record not in head_records)
+    return ParetoReferencePool(
+        records=ordered,
+        record_dates=tuple(record.created_at for record in ordered),
+        head=head,
+        head_dates=tuple(record.created_at for record in head),
+        tail=tail,
+        tail_dates=tuple(record.created_at for record in tail),
+    )
+
+def _choose_pareto_reference(
+    rng: random.Random, pool: ParetoReferencePool, order_date: datetime
+) -> CustomerReference | ProductReference:
+    head_count = bisect_right(pool.head_dates, order_date)
+    tail_count = bisect_right(pool.tail_dates, order_date)
+    prefer_head = rng.random() < PARETO_ACTIVITY_SHARE
+    preferred_records, preferred_count = (
+        (pool.head, head_count) if prefer_head else (pool.tail, tail_count)
+    )
+    fallback_records, fallback_count = (
+        (pool.tail, tail_count) if prefer_head else (pool.head, head_count)
+    )
+    if preferred_count:
+        return preferred_records[rng.randrange(preferred_count)]
+    if fallback_count:
+        return fallback_records[rng.randrange(fallback_count)]
+    raise ValueError("No creation-time-eligible reference is available")
+def _select_pareto_products(
+    rng: random.Random,
+    product_pool: ParetoReferencePool,
+    order_date: datetime,
+    item_count: int,
+) -> list[ProductReference]:
+    eligible_count = bisect_right(product_pool.record_dates, order_date)
+    if eligible_count < item_count:
+        raise ValueError("Not enough creation-time-eligible products")
+
+    selected: list[ProductReference] = []
+    selected_ids: set[int] = set()
+    attempts = 0
+    while len(selected) < item_count and attempts < item_count * 20:
+        candidate = _choose_pareto_reference(rng, product_pool, order_date)
+        attempts += 1
+        if candidate.product_id not in selected_ids:
+            selected.append(candidate)
+            selected_ids.add(candidate.product_id)
+
+    if len(selected) < item_count:
+        for candidate in product_pool.records[:eligible_count]:
+            if candidate.product_id not in selected_ids:
+                selected.append(candidate)
+                selected_ids.add(candidate.product_id)
+            if len(selected) == item_count:
+                break
+    return selected
+def _evenly_distributed_order_date(
+    rng: random.Random,
+    expected_order_id: int,
+    total_order_count: int,
+    start_datetime: datetime,
+) -> datetime:
+    window_seconds = int((WINDOW_END - start_datetime).total_seconds())
+    lower = window_seconds * (expected_order_id - 1) // total_order_count
+    upper = window_seconds * expected_order_id // total_order_count
+    return start_datetime + timedelta(seconds=rng.randint(lower, max(lower, upper - 1)))
+
+def _weighted_order_status(rng: random.Random) -> str:
+    draw = rng.random()
+    cumulative = 0.0
+    for status, weight in ORDER_STATUS_WEIGHTS:
+        cumulative += weight
+        if draw < cumulative:
+            return status
+    return ORDER_STATUS_WEIGHTS[-1][0]
+
+
+def _order_created_at(rng: random.Random, order_date: datetime) -> datetime:
+    """Return an audit timestamp at most five minutes after an order event."""
+
+    return _random_datetime(
+        rng, order_date, min(order_date + timedelta(minutes=5), WINDOW_END)
+    )
 
 
 def _audit_fields(created_at: datetime) -> Record:

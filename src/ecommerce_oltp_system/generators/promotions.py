@@ -94,6 +94,7 @@ def generate_promotion_products(
         mappings.append(
             {
                 "promotion_id": promotion_id,
+                "promotion_product_code": f"PPM-{len(mappings) + 1:06d}",
                 "product_id": product_id,
                 "created_at": fake.date_time_between(
                     start_date=earliest_created_at, end_date=latest_created_at
