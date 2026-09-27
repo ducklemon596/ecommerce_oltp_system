@@ -1,1 +1,1 @@
-"""Database-layer package."""
+"""PostgreSQL schema, transaction, checkpoint, and loading components."""

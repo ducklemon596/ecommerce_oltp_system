@@ -20,7 +20,18 @@ TABLE_OUTPUTS = (
 def write_data_files(
     data: GeneratedData, output_dir: str | Path = "data"
 ) -> list[Path]:
-    """Write every validated table to its own deterministic CSV file."""
+    """Write the validated reference/dependent stage to one CSV per table.
+
+    Called after :func:`generators.pipeline.generate_data` succeeds and before
+    order streaming begins. ``data`` contains the seven in-memory master and
+    dependent table collections; ``output_dir`` is created when needed. Returns
+    the written paths in dependency-aware table order.
+
+    The function asserts that each table has records and that database-managed
+    primary keys are absent, then writes deterministic headers and rows. These
+    file writes are its only side effect; validation belongs to the pipeline
+    stage immediately before this function is called.
+    """
 
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
@@ -44,6 +55,7 @@ def write_data_files(
 
 
 def _csv_record(record: Record) -> Record:
+    """Convert one record into CSV-compatible values."""
     return {field: csv_value(value) for field, value in record.items()}
 
 

@@ -6,13 +6,12 @@ import argparse
 import csv
 import random
 from bisect import bisect_right
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from time import perf_counter
 
-from ecommerce_oltp_system.generators.constants import (
+from ..config import (
     CREATED_BY,
     MAX_ORDER_ITEM_QUANTITY,
     MAX_ORDER_ITEMS,
@@ -22,98 +21,21 @@ from ecommerce_oltp_system.generators.constants import (
     PARETO_ACTIVITY_SHARE,
     PARETO_HEAD_SHARE,
     WINDOW_START,
-    ORDER_STATUSES,
     ORDERS_PER_FILE,
     SEED,
     WINDOW_END,
 )
-from ecommerce_oltp_system.generators.exporter import csv_value
-from ecommerce_oltp_system.generators.models import Record
-from ecommerce_oltp_system.generators.validators import validate_order, validate_order_items
-
-
-ORDER_COLUMNS = (
-    "customer_id",
-    "order_code",
-    "order_date",
-    "status",
-    "total_amount",
-    "created_at",
-    "created_by",
-    "updated_at",
-    "updated_by",
-    "deleted_at",
-    "deleted_by",
-    "is_deleted",
-    "loaded_at",
+from ..io import csv_value
+from ..models import Record
+from .models import (
+    ORDER_COLUMNS,
+    ORDER_ITEM_COLUMNS,
+    CustomerReference,
+    OrderGenerationStats,
+    ParetoReferencePool,
+    ProductReference,
 )
-
-ORDER_ITEM_COLUMNS = (
-    "order_id",
-    "order_item_code",
-    "product_id",
-    "order_date",
-    "quantity",
-    "unit_price",
-    "subtotal",
-    "created_at",
-    "created_by",
-    "updated_at",
-    "updated_by",
-    "deleted_at",
-    "deleted_by",
-    "is_deleted",
-    "loaded_at",
-)
-
-
-@dataclass(frozen=True, slots=True)
-class CustomerReference:
-    """Customer fields needed while generating an order."""
-
-    customer_id: int
-    created_at: datetime
-
-
-@dataclass(frozen=True, slots=True)
-class ProductReference:
-    """Product fields needed while generating an order item."""
-
-    product_id: int
-    created_at: datetime
-    price: Decimal
-
-
-@dataclass(frozen=True, slots=True)
-class ParetoReferencePool:
-    """Creation-time-sorted records split into a preferential 20% head."""
-
-    records: tuple[CustomerReference | ProductReference, ...]
-    record_dates: tuple[datetime, ...]
-    head: tuple[CustomerReference | ProductReference, ...]
-    head_dates: tuple[datetime, ...]
-    tail: tuple[CustomerReference | ProductReference, ...]
-    tail_dates: tuple[datetime, ...]
-
-@dataclass(frozen=True, slots=True)
-class OrderGenerationStats:
-
-    """Aggregate timing and output counts from one generation run."""
-    orders: int
-    order_items: int
-    elapsed_seconds: float
-    order_files: int
-    order_item_files: int
-
-    @property
-    def orders_per_second(self) -> float:
-        return self.orders / self.elapsed_seconds if self.elapsed_seconds else 0.0
-
-    @property
-    def order_items_per_second(self) -> float:
-        return (
-            self.order_items / self.elapsed_seconds if self.elapsed_seconds else 0.0
-        )
+from .validation import validate_order, validate_order_items
 
 
 def generate_order_files(
@@ -124,7 +46,19 @@ def generate_order_files(
     seed: int = SEED,
     show_progress: bool = True,
 ) -> OrderGenerationStats:
-    """Stream orders and items into paired part files without retaining the dataset."""
+    """Run the order-streaming stage after reference CSV generation.
+
+    This pipeline stage reads ``customer.csv`` and ``product.csv`` from
+    ``data_dir`` as lightweight eligibility references, then produces matching
+    ``orders/order_part_*.csv`` and ``order_items/order_item_part_*.csv`` files
+    below ``output_dir``. ``order_count``, ``orders_per_file``, and ``seed``
+    control deterministic volume, chunking, and random choices.
+
+    Returns aggregate counts, elapsed time, and file counts. Each order and its
+    items are validated before they reach either CSV writer; the function writes
+    files incrementally and deliberately never retains all generated orders or
+    order items in memory.
+    """
 
     if order_count <= 0:
         raise ValueError("order_count must be positive")
@@ -138,7 +72,7 @@ def generate_order_files(
     products = load_product_references(source_dir / "product.csv")
     if not customers:
         raise ValueError("customer.csv does not contain any customers")
-    customer_pool = _pareto_pool(customers)
+    customer_pool = build_pareto_reference_pool(customers)
 
     available_products = sorted(
         products,
@@ -147,7 +81,7 @@ def generate_order_files(
     if len(available_products) < MAX_ORDER_ITEMS:
         raise ValueError(f"At least {MAX_ORDER_ITEMS} products are required")
 
-    product_pool = _pareto_pool(available_products)
+    product_pool = build_pareto_reference_pool(available_products)
     product_created_at = [product.created_at for product in available_products]
     earliest_fully_eligible_date = product_created_at[MAX_ORDER_ITEMS - 1]
     if earliest_fully_eligible_date > WINDOW_END:
@@ -179,7 +113,7 @@ def generate_order_files(
         part_order_count = min(orders_per_file, order_count - generated_orders)
         first_expected_order_id = generated_orders + 1
         part_started_at = perf_counter()
-        part_item_count = _write_part(
+        part_item_count = _generate_validate_and_write_part(
             rng=rng,
             customer_pool=customer_pool,
             product_pool=product_pool,
@@ -214,44 +148,7 @@ def generate_order_files(
     )
 
 
-def load_customer_references(csv_path: str | Path) -> list[CustomerReference]:
-    """Read only the expected ID and creation timestamp for each customer."""
-
-    path = Path(csv_path)
-    with path.open("r", encoding="utf-8", newline="") as source:
-        reader = csv.DictReader(source)
-        _require_columns(path, reader.fieldnames, {"created_at"})
-        return [
-            CustomerReference(
-                customer_id=customer_id,
-                created_at=datetime.fromisoformat(row["created_at"]),
-            )
-            for customer_id, row in enumerate(reader, start=1)
-        ]
-
-
-def load_product_references(csv_path: str | Path) -> list[ProductReference]:
-    """Read only fields required for product eligibility and line pricing."""
-
-    path = Path(csv_path)
-    with path.open("r", encoding="utf-8", newline="") as source:
-        reader = csv.DictReader(source)
-        _require_columns(
-            path,
-            reader.fieldnames,
-            {"created_at", "price"},
-        )
-        return [
-            ProductReference(
-                product_id=product_id,
-                created_at=datetime.fromisoformat(row["created_at"]),
-                price=Decimal(row["price"]),
-            )
-            for product_id, row in enumerate(reader, start=1)
-        ]
-
-
-def _write_part(
+def _generate_validate_and_write_part(
     *,
     rng: random.Random,
     customer_pool: ParetoReferencePool,
@@ -264,6 +161,17 @@ def _write_part(
     order_path: Path,
     order_item_path: Path,
 ) -> int:
+    """Generate, validate, and write one paired order-range file set.
+
+    Used by :func:`generate_order_files` for one bounded output part.
+    ``first_expected_order_id`` anchors the global future PostgreSQL order ID;
+    ``customer_pool`` and ``product_pool`` limit selections to entities created
+    by each generated order date. The function returns the item count written.
+
+    It opens both part files, writes their headers, validates every order and
+    its item records before writing their rows, and closes both files at the end
+    of the range. Only one order and its few items exist in memory at a time.
+    """
     part_item_count = 0
 
     with (
@@ -286,9 +194,9 @@ def _write_part(
             order_date = _evenly_distributed_order_date(
                 rng, expected_order_id, total_order_count, order_window_start
             )
-            customer = _choose_pareto_reference(rng, customer_pool, order_date)
+            customer = choose_pareto_reference(rng, customer_pool, order_date)
             item_count = rng.randint(MIN_ORDER_ITEMS, MAX_ORDER_ITEMS)
-            selected_products = _select_pareto_products(
+            selected_products = select_pareto_products(
                 rng, product_pool, order_date, item_count
             )
 
@@ -339,83 +247,20 @@ def _write_part(
 
 
 
-def _pareto_pool(
-    records: list[CustomerReference] | list[ProductReference],
-) -> ParetoReferencePool:
-    ordered = tuple(sorted(records, key=lambda record: (record.created_at, record.customer_id if isinstance(record, CustomerReference) else record.product_id)))
-    head_size = max(1, int(len(ordered) * PARETO_HEAD_SHARE))
-    head = tuple(
-        record for record in ordered
-        if (record.customer_id if isinstance(record, CustomerReference) else record.product_id) <= head_size
-    )
-    head_records = set(head)
-    tail = tuple(record for record in ordered if record not in head_records)
-    return ParetoReferencePool(
-        records=ordered,
-        record_dates=tuple(record.created_at for record in ordered),
-        head=head,
-        head_dates=tuple(record.created_at for record in head),
-        tail=tail,
-        tail_dates=tuple(record.created_at for record in tail),
-    )
-
-def _choose_pareto_reference(
-    rng: random.Random, pool: ParetoReferencePool, order_date: datetime
-) -> CustomerReference | ProductReference:
-    head_count = bisect_right(pool.head_dates, order_date)
-    tail_count = bisect_right(pool.tail_dates, order_date)
-    prefer_head = rng.random() < PARETO_ACTIVITY_SHARE
-    preferred_records, preferred_count = (
-        (pool.head, head_count) if prefer_head else (pool.tail, tail_count)
-    )
-    fallback_records, fallback_count = (
-        (pool.tail, tail_count) if prefer_head else (pool.head, head_count)
-    )
-    if preferred_count:
-        return preferred_records[rng.randrange(preferred_count)]
-    if fallback_count:
-        return fallback_records[rng.randrange(fallback_count)]
-    raise ValueError("No creation-time-eligible reference is available")
-def _select_pareto_products(
-    rng: random.Random,
-    product_pool: ParetoReferencePool,
-    order_date: datetime,
-    item_count: int,
-) -> list[ProductReference]:
-    eligible_count = bisect_right(product_pool.record_dates, order_date)
-    if eligible_count < item_count:
-        raise ValueError("Not enough creation-time-eligible products")
-
-    selected: list[ProductReference] = []
-    selected_ids: set[int] = set()
-    attempts = 0
-    while len(selected) < item_count and attempts < item_count * 20:
-        candidate = _choose_pareto_reference(rng, product_pool, order_date)
-        attempts += 1
-        if candidate.product_id not in selected_ids:
-            selected.append(candidate)
-            selected_ids.add(candidate.product_id)
-
-    if len(selected) < item_count:
-        for candidate in product_pool.records[:eligible_count]:
-            if candidate.product_id not in selected_ids:
-                selected.append(candidate)
-                selected_ids.add(candidate.product_id)
-            if len(selected) == item_count:
-                break
-    return selected
 def _evenly_distributed_order_date(
     rng: random.Random,
     expected_order_id: int,
     total_order_count: int,
     start_datetime: datetime,
 ) -> datetime:
+    """Generate one date within its order-position interval."""
     window_seconds = int((WINDOW_END - start_datetime).total_seconds())
     lower = window_seconds * (expected_order_id - 1) // total_order_count
     upper = window_seconds * expected_order_id // total_order_count
     return start_datetime + timedelta(seconds=rng.randint(lower, max(lower, upper - 1)))
 
 def _weighted_order_status(rng: random.Random) -> str:
+    """Choose an order status using configured weights."""
     draw = rng.random()
     cumulative = 0.0
     for status, weight in ORDER_STATUS_WEIGHTS:
@@ -434,6 +279,7 @@ def _order_created_at(rng: random.Random, order_date: datetime) -> datetime:
 
 
 def _audit_fields(created_at: datetime) -> Record:
+    """Return default audit fields for a generated record."""
     return {
         "created_at": created_at,
         "created_by": CREATED_BY,
@@ -447,25 +293,18 @@ def _audit_fields(created_at: datetime) -> Record:
 
 
 def _csv_row(record: Record, columns: tuple[str, ...]) -> tuple[object, ...]:
+    """Convert a record to values in the requested CSV column order."""
     return tuple(csv_value(record[column]) for column in columns)
 
 
 def _random_datetime(
     rng: random.Random, start_datetime: datetime, end_datetime: datetime
 ) -> datetime:
+    """Generate a timestamp uniformly within an inclusive interval."""
     seconds = int((end_datetime - start_datetime).total_seconds())
     if seconds < 0:
         raise ValueError("Cannot generate a datetime before its lower bound")
     return start_datetime + timedelta(seconds=rng.randint(0, seconds))
-
-
-def _require_columns(
-    path: Path, fieldnames: list[str] | None, required: set[str]
-) -> None:
-    available = set(fieldnames or ())
-    missing = sorted(required - available)
-    if missing:
-        raise ValueError(f"{path} is missing required columns: {', '.join(missing)}")
 
 
 def _print_part_progress(
@@ -474,6 +313,7 @@ def _print_part_progress(
     order_item_count: int,
     elapsed_seconds: float,
 ) -> None:
+    """Print lightweight progress metrics for one completed part."""
     print(
         f"Part {part_number}:\n"
         f"{order_count:,} orders\n"
@@ -501,10 +341,12 @@ def print_summary(stats: OrderGenerationStats) -> None:
 
 
 def _rate(row_count: int, elapsed_seconds: float) -> float:
+    """Return a safe per-second rate."""
     return row_count / elapsed_seconds if elapsed_seconds else 0.0
 
 
 def _arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Stream benchmark-scale order and order-item CSV files."
     )
@@ -534,5 +376,131 @@ def main() -> None:
     print_summary(stats)
 
 
+
+def load_customer_references(csv_path: str | Path) -> list[CustomerReference]:
+    """Read the customer inputs needed by the order-streaming pipeline.
+
+    Used at the start of :func:`orders.stream.generate_order_files`. ``csv_path``
+    is the validated ``customer.csv`` reference file. Its deterministic row order
+    is converted to expected future ``customer_id`` values because master CSVs do
+    not contain database-managed IDs. Returns lightweight references only; it
+    does not write files or access PostgreSQL.
+    """
+    path = Path(csv_path)
+    with path.open("r", encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source)
+        require_columns(path, reader.fieldnames, {"created_at"})
+        return [
+            CustomerReference(customer_id=customer_id, created_at=datetime.fromisoformat(row["created_at"]))
+            for customer_id, row in enumerate(reader, start=1)
+        ]
+
+
+def load_product_references(csv_path: str | Path) -> list[ProductReference]:
+    """Read product eligibility and price inputs for the order-streaming stage.
+
+    ``csv_path`` identifies the generated ``product.csv`` reference file. Row
+    positions become expected future product IDs; ``created_at`` and ``price``
+    support temporal eligibility, item pricing, and validation. Returns compact
+    in-memory references and has no file-write or database side effects.
+    """
+    path = Path(csv_path)
+    with path.open("r", encoding="utf-8", newline="") as source:
+        reader = csv.DictReader(source)
+        require_columns(path, reader.fieldnames, {"created_at", "price"})
+        return [
+            ProductReference(product_id=product_id, created_at=datetime.fromisoformat(row["created_at"]), price=Decimal(row["price"]))
+            for product_id, row in enumerate(reader, start=1)
+        ]
+
+
+def build_pareto_reference_pool(records: list[CustomerReference] | list[ProductReference]) -> ParetoReferencePool:
+    """Build deterministic date-aware head/tail choices for order generation.
+
+    Used once for customer references and once for product references before
+    streaming begins. The input records are sorted by creation time and split
+    using the configured Pareto head share. The returned pool supports fast
+    selection of records created by a given order date; it neither writes files
+    nor mutates the source references.
+    """
+    ordered = tuple(sorted(records, key=lambda record: (record.created_at, _reference_id(record))))
+    head_size = max(1, int(len(ordered) * PARETO_HEAD_SHARE))
+    head = tuple(record for record in ordered if _reference_id(record) <= head_size)
+    head_records = set(head)
+    tail = tuple(record for record in ordered if record not in head_records)
+    return ParetoReferencePool(
+        records=ordered,
+        record_dates=tuple(record.created_at for record in ordered),
+        head=head,
+        head_dates=tuple(record.created_at for record in head),
+        tail=tail,
+        tail_dates=tuple(record.created_at for record in tail),
+    )
+
+
+def choose_pareto_reference(rng: random.Random, pool: ParetoReferencePool, order_date: datetime) -> CustomerReference | ProductReference:
+    """Choose one order-date-eligible customer or product from a Pareto pool.
+
+    Called while constructing each streamed order and item selection. ``pool``
+    contains references sorted by creation time and ``order_date`` establishes
+    the temporal upper bound. Returns one eligible reference, favouring the
+    configured activity head, or raises before an invalid order can be written.
+    """
+    head_count = bisect_right(pool.head_dates, order_date)
+    tail_count = bisect_right(pool.tail_dates, order_date)
+    prefer_head = rng.random() < PARETO_ACTIVITY_SHARE
+    preferred_records, preferred_count = (pool.head, head_count) if prefer_head else (pool.tail, tail_count)
+    fallback_records, fallback_count = (pool.tail, tail_count) if prefer_head else (pool.head, head_count)
+    if preferred_count:
+        return preferred_records[rng.randrange(preferred_count)]
+    if fallback_count:
+        return fallback_records[rng.randrange(fallback_count)]
+    raise ValueError("No creation-time-eligible reference is available")
+
+
+def select_pareto_products(rng: random.Random, product_pool: ParetoReferencePool, order_date: datetime, item_count: int) -> list[ProductReference]:
+    """Select distinct product references eligible for one streamed order.
+
+    This order-item selection step uses ``product_pool`` and ``order_date`` to
+    enforce product creation before the order. It returns exactly ``item_count``
+    product references, using a bounded Pareto selection loop with deterministic
+    fallback; no product state, files, or database rows are mutated.
+    """
+    eligible_count = bisect_right(product_pool.record_dates, order_date)
+    if eligible_count < item_count:
+        raise ValueError("Not enough creation-time-eligible products")
+    selected: list[ProductReference] = []
+    selected_ids: set[int] = set()
+    attempts = 0
+    while len(selected) < item_count and attempts < item_count * 20:
+        candidate = choose_pareto_reference(rng, product_pool, order_date)
+        attempts += 1
+        if candidate.product_id not in selected_ids:
+            selected.append(candidate)
+            selected_ids.add(candidate.product_id)
+    if len(selected) < item_count:
+        for candidate in product_pool.records[:eligible_count]:
+            if candidate.product_id not in selected_ids:
+                selected.append(candidate)
+                selected_ids.add(candidate.product_id)
+            if len(selected) == item_count:
+                break
+    return selected
+
+
+def require_columns(path: Path, fieldnames: list[str] | None, required: set[str]) -> None:
+    """Fail early when a master CSV lacks fields required by order generation."""
+    missing = sorted(required - set(fieldnames or ()))
+    if missing:
+        raise ValueError(f"{path} is missing required columns: {', '.join(missing)}")
+
+
+def _reference_id(record: CustomerReference | ProductReference) -> int:
+    """Return either reference type's future positional database key."""
+    return record.customer_id if isinstance(record, CustomerReference) else record.product_id
+
+
 if __name__ == "__main__":
     main()
+
+

@@ -3,13 +3,14 @@
 import argparse
 from pathlib import Path
 
-from .generators.orders import print_summary
+from .generators.orders.generator import print_summary
 from .generators.pipeline import generate_all_files, generate_and_write_data
-from .generators.constants import ORDER_COUNT, ORDERS_PER_FILE, SEED
+from .generators.config import ORDER_COUNT, ORDERS_PER_FILE, SEED
 from .generators.models import GeneratedData
 
 
 def _arguments() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Generate, validate, and write all nine synthetic tables."
     )
@@ -26,6 +27,7 @@ def _arguments() -> argparse.Namespace:
 
 
 def _print_base_summary(data: GeneratedData, output_dir: Path) -> None:
+    """Print a summary for generated reference tables."""
     print(
         "Generated, validated, and wrote "
         f"{len(data.brands)} brands, "

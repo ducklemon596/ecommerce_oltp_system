@@ -1,1 +1,1 @@
-"""Table-specific synthetic data generators."""
+"""Synthetic-data generation components grouped by pipeline responsibility."""

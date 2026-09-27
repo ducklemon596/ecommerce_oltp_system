@@ -5,7 +5,7 @@ from pathlib import Path
 
 from faker import Faker
 
-from ecommerce_oltp_system.generators.constants import (
+from ecommerce_oltp_system.generators.config import (
     BRAND_COUNT,
     CATEGORY_TREE,
     CUSTOMER_COUNT,
@@ -28,29 +28,31 @@ from ecommerce_oltp_system.generators.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.generators.exporter import write_data_files
-from ecommerce_oltp_system.generators.catalog import (
+from ecommerce_oltp_system.generators.io import write_data_files
+from ecommerce_oltp_system.generators.reference.generator import (
     generate_brands,
     generate_categories,
     generate_products,
     generate_sellers,
 )
-from ecommerce_oltp_system.generators.customers import generate_customers
-from ecommerce_oltp_system.generators.orders import (
+from ecommerce_oltp_system.generators.reference.generator import generate_customers
+from ecommerce_oltp_system.generators.orders.generator import (
     OrderGenerationStats,
     generate_order_files,
 )
-from ecommerce_oltp_system.generators.promotions import (
+from ecommerce_oltp_system.generators.reference.generator import (
     generate_promotion_products,
     generate_promotions,
 )
 from ecommerce_oltp_system.generators.models import GeneratedData, Record
-from ecommerce_oltp_system.generators.validators import (
+from ecommerce_oltp_system.generators.orders.validation import (
+    validate_order,
+    validate_order_items,
+)
+from ecommerce_oltp_system.generators.reference.validation import (
     validate_brands,
     validate_categories,
     validate_customers,
-    validate_order,
-    validate_order_items,
     validate_products,
     validate_promotion_products,
     validate_promotions,
@@ -106,7 +108,16 @@ __all__ = [
 
 
 def generate_data(seed: int = SEED) -> GeneratedData:
-    """Generate and validate one complete deterministic data session."""
+    """Generate and validate all in-memory reference and dependent records.
+
+    This is the master-data stage of the end-to-end generator pipeline. ``seed``
+    initializes both Python and Faker randomness, then produces brands,
+    categories, sellers, products, customers, promotions, and promotion-product
+    mappings in dependency order. It returns validated :class:`GeneratedData`.
+
+    The function has no file or database side effects. It deliberately validates
+    every generated table and relationship before any later CSV-writing stage.
+    """
 
     random.seed(seed)
     Faker.seed(seed)
@@ -144,7 +155,15 @@ def generate_data(seed: int = SEED) -> GeneratedData:
 def generate_and_write_data(
     seed: int = SEED, output_dir: str | Path = "data"
 ) -> tuple[GeneratedData, list[Path]]:
-    """Generate, validate, and write one complete dataset."""
+    """Generate and persist only the seven non-streamed CSV tables.
+
+    Used by the full pipeline before order streaming and by ``--base-only``.
+    ``seed`` controls deterministic records and ``output_dir`` is the CSV root.
+    Returns the validated in-memory data plus paths written by the exporter.
+
+    The function writes reference files only after :func:`generate_data` has
+    completed all master/dependent validation; it does not generate orders.
+    """
 
     data = generate_data(seed)
     paths = write_data_files(data, output_dir)
@@ -158,7 +177,17 @@ def generate_all_files(
     orders_per_file: int = ORDERS_PER_FILE,
     show_progress: bool = True,
 ) -> tuple[dict[str, int], list[Path], OrderGenerationStats]:
-    """Generate all nine tables, streaming the two high-volume datasets."""
+    """Run the complete deterministic generation and CSV-writing workflow.
+
+    The function first generates, validates, and writes the seven reference and
+    dependent tables. It then streams validated order and order-item parts using
+    those CSV files as eligible customer/product references. ``order_count`` and
+    ``orders_per_file`` control only the high-volume stage.
+
+    Returns reference-table counts, their output paths, and streaming benchmark
+    statistics. Its side effects are CSV writes below ``output_dir``; order data
+    is written incrementally rather than retained in memory.
+    """
 
     data, paths = generate_and_write_data(seed, output_dir)
     table_counts = {

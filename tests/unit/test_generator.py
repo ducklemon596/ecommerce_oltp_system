@@ -20,36 +20,33 @@ from ecommerce_oltp_system.generators.pipeline import (
 
 
 class GeneratorTests(unittest.TestCase):
-    def test_generation_meets_all_validation_rules(self) -> None:
+    def test_generated_reference_row_counts(self) -> None:
+        """Test generated reference tables have configured row counts."""
         data = generate_data()
-
-        validate_brands(data.brands)
-        validate_categories(data.categories)
-        validate_sellers(data.sellers)
-        validate_products(data.products, data.brands, data.categories, data.sellers)
-        validate_customers(data.customers)
-        validate_promotions(data.promotions)
-        validate_promotion_products(
-            data.promotion_products, data.promotions, data.products
-        )
+        self.assertEqual(len(data.brands), 20)
+        self.assertEqual(len(data.categories), 25)
+        self.assertEqual(len(data.sellers), 50)
         self.assertEqual(len(data.products), PRODUCT_COUNT)
         self.assertEqual(len(data.customers), CUSTOMER_COUNT)
         self.assertEqual(len(data.promotions), PROMOTION_COUNT)
         self.assertEqual(len(data.promotion_products), PROMOTION_PRODUCT_COUNT)
 
     def test_same_seed_generates_identical_data(self) -> None:
+        """Test same seed generates identical data."""
         first_run = generate_data(SEED)
         second_run = generate_data(SEED)
 
         self.assertEqual(_dataset_fingerprint(first_run), _dataset_fingerprint(second_run))
 
     def test_a_different_seed_changes_the_generated_data(self) -> None:
+        """Test a different seed changes the generated data."""
         self.assertNotEqual(
             _dataset_fingerprint(generate_data(SEED)),
             _dataset_fingerprint(generate_data(SEED + 1)),
         )
 
     def test_product_cannot_predate_seller_record(self) -> None:
+        """Test product cannot predate seller record."""
         data = generate_data()
         product = data.products[0]
         seller = data.sellers[product["seller_id"] - 1]
@@ -61,6 +58,7 @@ class GeneratorTests(unittest.TestCase):
             )
 
     def test_records_do_not_include_database_primary_keys(self) -> None:
+        """Test records do not include database primary keys."""
         data = generate_data()
         tables = (
             (data.brands, "brand_id"),
@@ -93,6 +91,7 @@ def _dataset_fingerprint(data: object) -> str:
 
 
 def _record_values(record: dict) -> tuple:
+    """Return stable comparable values for one generated record."""
     return tuple(sorted(record.items()))
 
 

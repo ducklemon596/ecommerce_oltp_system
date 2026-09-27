@@ -1,20 +1,15 @@
 """Validation rules for the complete in-memory synthetic dataset."""
 
-from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 
-from ecommerce_oltp_system.generators.constants import (
+from ..config import (
     BRAND_COUNT,
     CREATED_BY,
     CUSTOMER_COUNT,
     DISCOUNT_TYPES,
     GENDERS,
-    MAX_ORDER_ITEM_QUANTITY,
-    MAX_ORDER_ITEMS,
     MAIN_CATEGORY_COUNT,
-    MIN_ORDER_ITEMS,
-    ORDER_STATUSES,
     PRE_WINDOW_END,
     PRE_WINDOW_START,
     PRODUCT_ROLLOUT_END,
@@ -28,15 +23,17 @@ from ecommerce_oltp_system.generators.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.generators.models import Record
+from ..models import Record
 
 
 def _validate_unique_field(records: list[Record], field: str) -> None:
+    """Assert that a field is unique within the records."""
     values = [record[field] for record in records]
     assert len(values) == len(set(values)), f"{field} values must be unique"
 
 
-def _validate_audit_fields(records: list[Record]) -> None:
+def validate_audit_fields(records: list[Record]) -> None:
+    """Assert that records use the required audit defaults."""
     for record in records:
         assert record["created_by"] == CREATED_BY
         assert record["updated_at"] is None
@@ -48,9 +45,10 @@ def _validate_audit_fields(records: list[Record]) -> None:
 
 
 def validate_brands(brands: list[Record]) -> None:
+    """Validate brand count, uniqueness, audit, and time rules."""
     assert len(brands) == BRAND_COUNT, "Expected 20 brands"
     _validate_unique_field(brands, "brand_code")
-    _validate_audit_fields(brands)
+    validate_audit_fields(brands)
     assert len({brand["brand_name"] for brand in brands}) == BRAND_COUNT, (
         "Brand names must be unique"
     )
@@ -61,11 +59,12 @@ def validate_brands(brands: list[Record]) -> None:
 
 
 def validate_categories(categories: list[Record]) -> None:
+    """Validate category hierarchy, uniqueness, and time rules."""
     assert len(categories) == MAIN_CATEGORY_COUNT + SUBCATEGORY_COUNT, (
         "Expected 25 categories"
     )
     _validate_unique_field(categories, "category_code")
-    _validate_audit_fields(categories)
+    validate_audit_fields(categories)
     assert len({category["category_name"] for category in categories}) == len(categories), (
         "Category names must be unique"
     )
@@ -96,9 +95,10 @@ def validate_categories(categories: list[Record]) -> None:
 
 
 def validate_sellers(sellers: list[Record]) -> None:
+    """Validate seller domains, audit fields, and dates."""
     assert len(sellers) == SELLER_COUNT, "Expected 50 sellers"
     _validate_unique_field(sellers, "seller_code")
-    _validate_audit_fields(sellers)
+    validate_audit_fields(sellers)
     for seller in sellers:
         assert seller["seller_type"] in SELLER_TYPES, "Invalid seller type"
         assert 0 <= seller["rating"] <= 5, "Seller rating must be between 0 and 5"
@@ -120,9 +120,10 @@ def validate_products(
     categories: list[Record],
     sellers: list[Record],
 ) -> None:
+    """Validate product references, domains, and temporal rules."""
     assert len(products) == PRODUCT_COUNT, "Expected 3,000 products"
     _validate_unique_field(products, "product_code")
-    _validate_audit_fields(products)
+    validate_audit_fields(products)
     valid_category_ids = set(range(MAIN_CATEGORY_COUNT + 1, len(categories) + 1))
 
     for product in products:
@@ -155,8 +156,9 @@ def validate_products(
 
 
 def validate_customers(customers: list[Record]) -> None:
+    """Validate customer uniqueness, domains, and timestamps."""
     assert len(customers) == CUSTOMER_COUNT, "Expected 30,000 customers"
-    _validate_audit_fields(customers)
+    validate_audit_fields(customers)
     _validate_unique_field(customers, "customer_code")
     assert len({customer["email"] for customer in customers}) == CUSTOMER_COUNT, (
         "Customer emails must be unique"
@@ -172,9 +174,10 @@ def validate_customers(customers: list[Record]) -> None:
 
 
 def validate_promotions(promotions: list[Record]) -> None:
+    """Validate promotion domains, values, and date rules."""
     assert len(promotions) == PROMOTION_COUNT, "Expected 30 promotions"
     _validate_unique_field(promotions, "promotion_code")
-    _validate_audit_fields(promotions)
+    validate_audit_fields(promotions)
     for promotion in promotions:
         assert promotion["promotion_type"] in PROMOTION_TYPES, "Invalid promotion type"
         assert promotion["discount_type"] in DISCOUNT_TYPES, "Invalid discount type"
@@ -200,10 +203,11 @@ def validate_promotions(promotions: list[Record]) -> None:
 def validate_promotion_products(
     promotion_products: list[Record], promotions: list[Record], products: list[Record]
 ) -> None:
+    """Validate promotion-product references and uniqueness."""
     assert len(promotion_products) == PROMOTION_PRODUCT_COUNT, (
         "Expected 500 promotion-product mappings"
     )
-    _validate_audit_fields(promotion_products)
+    validate_audit_fields(promotion_products)
     _validate_unique_field(promotion_products, "promotion_product_code")
     used_pairs: set[tuple[int, int]] = set()
 
@@ -237,98 +241,3 @@ def validate_promotion_products(
             assert promotion["discount_value"] <= product["price"]
         assert final_price >= 0, "Promotion creates a negative product price"
 
-
-def validate_order(
-    order: Record,
-    order_items: list[Record],
-    customer_created_at: datetime,
-) -> None:
-    """Validate one streamed order and its calculated total."""
-
-    assert "order_id" not in order, "order_id must remain database-managed"
-    _validate_audit_fields([order])
-    assert order["order_code"].startswith("ORD-"), "Invalid order_code"
-    assert order["order_code"][4:].isdigit(), "Invalid order_code"
-    assert order["customer_id"] > 0, "Invalid customer_id"
-    assert WINDOW_START <= order["order_date"] <= WINDOW_END, (
-        "Order date is outside the generation window"
-    )
-    assert customer_created_at <= order["order_date"], (
-        "Order predates its customer"
-    )
-    assert order["status"] in ORDER_STATUSES, "Invalid order status"
-    assert order["created_at"] >= order["order_date"], (
-        "Order created_at predates order_date"
-    )
-    assert order["created_at"] <= WINDOW_END, (
-        "Order created_at is outside the generation window"
-    )
-    expected_total = sum(
-        (item["subtotal"] for item in order_items),
-        start=Decimal("0"),
-    )
-    assert order["total_amount"] == expected_total, (
-        "Order total does not equal its item subtotals"
-    )
-    assert order["total_amount"] >= 0, "Order total cannot be negative"
-
-
-def validate_order_items(
-    order_items: list[Record],
-    expected_order_id: int,
-    order_date: datetime,
-    product_references: Mapping[int, Record],
-) -> None:
-    """Validate the small item collection for one streamed order."""
-
-    assert MIN_ORDER_ITEMS <= len(order_items) <= MAX_ORDER_ITEMS, (
-        "An order must contain 2 to 5 items"
-    )
-    order_item_codes: set[str] = set()
-    _validate_audit_fields(order_items)
-    used_product_ids: set[int] = set()
-
-    for item in order_items:
-        assert "order_item_id" not in item, (
-            "order_item_id must remain database-managed"
-        )
-        expected_code_prefix = f"OIT-{expected_order_id:09d}-"
-        order_item_code = item["order_item_code"]
-        assert order_item_code.startswith(expected_code_prefix), "Invalid order_item_code"
-        assert order_item_code[len(expected_code_prefix):].isdigit(), "Invalid order_item_code"
-        assert order_item_code not in order_item_codes, "Duplicate order_item_code"
-        order_item_codes.add(order_item_code)
-
-        assert item["order_id"] == expected_order_id, (
-            "Order item references the wrong expected order_id"
-        )
-        product_id = item["product_id"]
-        assert product_id in product_references, "Invalid product_id"
-        assert product_id not in used_product_ids, (
-            "Products must be unique within an order"
-        )
-        used_product_ids.add(product_id)
-
-        product = product_references[product_id]
-        assert item["order_date"] == order_date, (
-            "Order item order_date differs from its order"
-        )
-        assert product["created_at"] <= order_date, (
-            "Order item predates its product"
-        )
-        assert 0 < item["quantity"] <= MAX_ORDER_ITEM_QUANTITY, (
-            "Order item quantity is outside the allowed range"
-        )
-        assert item["unit_price"] == product["price"], (
-            "Order item unit_price differs from its product price"
-        )
-        assert item["unit_price"] > 0, "Order item unit_price must be positive"
-        assert item["subtotal"] == item["quantity"] * item["unit_price"], (
-            "Order item subtotal is incorrect"
-        )
-        assert item["created_at"] >= order_date, (
-            "Order item created_at predates order_date"
-        )
-        assert item["created_at"] <= WINDOW_END, (
-            "Order item created_at is outside the generation window"
-        )
