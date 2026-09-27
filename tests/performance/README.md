@@ -1,12 +1,6 @@
 # Manual performance tests
 
-Large generation and PostgreSQL loading benchmarks belong here. They are run
-explicitly, not through `unittest discover`, so regular CI only runs unit and
-integration correctness tests.
+Large generation and PostgreSQL loading benchmarks are intentionally separate
+from normal unit and integration tests. `unittest discover` does not run them.
 
-Use the loader benchmark command when PostgreSQL and generated part files are
-available:
-
-```bash
-uv run python -m ecommerce_oltp_system.loader.benchmark_large_tables
-```
+This repository currently records benchmark findings in the [root README](../../README.md), but does not include a runnable benchmark harness. Add a focused, repeatable script here before treating new measurements as comparable to the recorded results.

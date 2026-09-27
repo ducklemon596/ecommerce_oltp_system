@@ -1,174 +1,203 @@
-## Synthetic-data generator and PostgreSQL loader
+# E-commerce OLTP synthetic data pipeline
 
-This version generates and validates `brand`, `category`, `seller`, `product`,
-`customer`, `promotion`, and `promotion_product`, writes each table to CSV, and
-streams `order` and `order_item` into CSV parts. The loader creates the complete
-PostgreSQL schema and loads all nine tables.
+A deterministic Python generator and PostgreSQL loader for a realistic e-commerce OLTP dataset. The project is designed to exercise relational data generation, temporal integrity, transactional loading, recovery behavior, and large-file ingestion—not to model every e-commerce workflow.
 
-Generate all nine tables with one deterministic command:
+## What it provides
 
-or:
-`uv run python -m ecommerce_oltp_system.generate`
-```bash
-uv run ecommerce-oltp-system
-```
+- Generates nine related tables with Faker and a configurable seed.
+- Writes small reference/dependent tables as CSV and streams large `order` and `order_item` data into paired part files.
+- Creates PostgreSQL tables, constraints, audit columns, staging tables, and load checkpoints.
+- Uses idempotent, checksum-protected loading with transactions, retries for large parts, and sequence synchronization.
+- Includes unit tests for generator contracts and PostgreSQL integration tests for rollback, retry, checkpoint, and concurrency behavior.
 
-The command writes:
+## Data flow
 
 ```text
-data/brand.csv
-data/category.csv
-data/seller.csv
-data/customer.csv
-data/product.csv
-data/promotion.csv
-data/promotion_product.csv
-data/orders/order_part_0001.csv
-data/orders/...
-data/order_items/order_item_part_0001.csv
-data/order_items/...
+seed + configuration
+        |
+        v
+reference/master generation -> validation -> reference CSV files
+        |                                      |
+        +--------------------------------------+ 
+                                               v
+                              streamed order + order_item part files
+                                               |
+                                               v
+schema -> dependency-aware PostgreSQL loader -> final tables
 ```
 
-Generate only the seven smaller base tables with
-`uv run ecommerce-oltp-system --base-only`.
+See [generators/README.md](src/ecommerce_oltp_system/generators/README.md) and [loader/README.md](src/ecommerce_oltp_system/loader/README.md) for implementation-level guidance.
 
-## Order-only benchmark
+## Tables and relationships
 
-Regenerate only the 5,000,000 orders and approximately 17,500,000 order items:
+| Area | Tables | Main relationships |
+|---|---|---|
+| Catalog | `brand`, `category`, `seller`, `product` | A product references one brand, category, and seller. Categories may have a parent category. |
+| Customers | `customer` | An order references one customer. |
+| Promotions | `promotion`, `promotion_product` | Promotion-product maps a promotion to a product. |
+| Transactions | `order`, `order_item` | An order has items; each item references one product. |
 
-```bash
-uv run ecommerce-generate-orders
-```
+All final tables use database-managed serial/identity primary keys, stable business/source codes, audit fields, and `loaded_at DEFAULT CURRENT_TIMESTAMP`. `order` is quoted in SQL because it is a reserved word.
 
-The command reads `data/customer.csv` and `data/product.csv`, then streams paired
-parts to:
+## Repository layout
 
 ```text
-data/orders/order_part_0001.csv
-data/order_items/order_item_part_0001.csv
-...
+src/ecommerce_oltp_system/
+  generate.py                 # generation CLI
+  load.py                     # loading CLI
+  generators/
+    pipeline.py               # end-to-end generation orchestration
+    reference/                # master/dependent generation and validation
+    orders/                   # streamed order generation and validation
+  loader/
+    pipeline.py               # schema-and-load orchestration
+    db/                       # connection, schema, serial sequences
+    checkpoint/               # checksum/checkpoint repository
+    strategies/               # small-table and large-part loaders
 ```
 
-Each part contains at most 100,000 orders by default. Change the benchmark size or
-part size without editing code:
+## Requirements and installation
+
+- Python 3.12 or later
+- PostgreSQL available to the machine running the loader
+- [uv](https://docs.astral.sh/uv/) (recommended)
 
 ```bash
-uv run ecommerce-generate-orders --orders 500000 --orders-per-file 50000
+uv sync
 ```
 
-Use `--output-dir` to write the generated folders somewhere other than `data`.
-The command reports per-part and aggregate elapsed time and throughput. Expected
+The project declares `Faker` and `psycopg2-binary` in `pyproject.toml`; `uv sync` installs them.
 
-Run the tests:
+## Database configuration
 
-```bash
-uv run python -m unittest discover -s tests
-```
-
-The generator uses seed `42`. Stable business keys use the forms `BRD-00001`,
-`CAT-00001`, `SEL-00001`, `PRD-000001`, and `PRO-00001`. PostgreSQL-managed
-primary keys are absent from the files. Orders use `ORD-000000001` and later codes.
-
-Integer foreign keys are based on expected PostgreSQL IDs:
-
-- `category.parent_category_id` points to expected category IDs `1..5`.
-- Product `brand_id`, `category_id`, and `seller_id` point to the deterministic
-  row positions of their parent files. Product categories use only IDs `6..25`.
-- Promotion-product `promotion_id` and `product_id` point to deterministic row
-  positions in `promotion.csv` and `product.csv`.
-
-The loader preserves CSV row order and verifies that generated IDs match those
-positions. A database with unrelated rows or matching business keys under
-different IDs is rejected because this version does not remap foreign keys.
-
-All records include audit columns. `created_by` is `faker_batch`; update and
-deletion fields are empty; `is_deleted` is false. `loaded_at` stays empty in
-CSV because PostgreSQL sets it when the row is loaded.
-
-## PostgreSQL schema and loading
-
-Copy the safe template to a local configuration file, set your PostgreSQL values,
-then create the schema and load the complete dataset:
+Create a local configuration file. It is ignored by Git.
 
 ```bash
 cp database.ini.example database.ini
-# Update database.ini with your host, database, user, and password.
-uv run ecommerce-load-data
 ```
 
-The default section is `[postgresql]`; `port` is optional. The actual
-`database.ini` is ignored by Git to protect credentials.
+Edit the `[postgresql]` values in `database.ini`:
 
-The schema is defined in `src/ecommerce_oltp_system/loader/sql/schema.sql`. To
-create only the tables, use `uv run ecommerce-load-data --schema-only`. To load
-into an already-created schema, use `uv run ecommerce-load-data --skip-schema`.
-A custom CSV directory can be supplied with `--data-dir`.
+```ini
+[postgresql]
+host=localhost
+port=5432
+database=ecommerce_oltp
+user=postgres
+password=change-me
+```
 
-Files load in dependency order: `brand`, `category`, `seller`, `customer`,
-`product`, `promotion`, then `promotion_product`. Each file is one transaction.
-The loader locks the target table, synchronizes its serial sequence to its
-current maximum primary key, and performs parameterized UPSERTs in CSV order.
-An error rolls back every row from that file while leaving previously committed
-table files unchanged. `loaded_at` is database-managed and is refreshed when an
-existing row is updated.
+The loader requires `host`, `database`, `user`, and `password`; `port` is optional. Use `--config` and `--section` to select a different file or INI section.
 
-UPSERT keys are the table's stable source identifiers: the code columns for
-brand, category, seller, product, and promotion; email for customer; and the
-`(promotion_id, product_id)` pair for promotion-product mappings.
+## Commands
 
-The numeric foreign keys require brand, category, seller, product, and promotion
-IDs to match their one-based CSV positions. The loader checks this invariant and
-rolls back the current table if it is violated. ID remapping by business code is
-intentionally not implemented in this version.
+| Command | Purpose |
+|---|---|
+| `uv run generate` | Generate all tables and CSV files |
+| `uv run load` | Create the schema and load CSV files into PostgreSQL |
 
+These are the only public console entry points.
 
-## Large-table loading benchmark report
+## Generate the dataset
 
-Measurements used five generated part files: 500,000 order rows and 1,750,656 matching order-item rows. Each run used one transaction and a 30,000-row execute_values page size. Final benchmark targets were logged tables; staging tables were unlogged. One warm-up was excluded, then five randomized measured runs were collected for every configuration. Values are medians; ranges are minimum–maximum elapsed times.
+Generate the complete default dataset (5,000,000 orders, 100,000 orders per part):
 
-### Feature-overhead benchmark
+```bash
+uv run generate
+```
 
-#### Order
+For a smaller development run:
 
-| Method | Configuration | Median s | Rows/s | Range s | Δ previous | Δ base |
-|---|---|---:|---:|---:|---:|---:|
-| execute_values | Base | 8.99 | 55,616 | 8.84–9.41 | — | — |
-| execute_values | + CHECK | 9.20 | 54,348 | 8.97–9.45 | +2.3% | +2.3% |
-| execute_values | + PK / UNIQUE | 10.59 | 47,223 | 10.27–10.86 | +15.1% | +17.8% |
-| execute_values | + FK | 12.51 | 39,975 | 12.48–12.69 | +18.1% | +39.1% |
-| execute_values | + UPSERT | 14.57 | 34,320 | 14.33–14.64 | +16.5% | +62.1% |
-| COPY → staging → final | Base | 1.80 | 277,247 | 1.76–1.97 | — | — |
-| COPY → staging → final | + CHECK | 1.92 | 260,771 | 1.91–1.98 | +6.3% | +6.3% |
-| COPY → staging → final | + PK / UNIQUE | 3.32 | 150,416 | 3.20–3.53 | +73.4% | +84.3% |
-| COPY → staging → final | + FK | 5.35 | 93,519 | 5.31–5.52 | +60.8% | +196.5% |
-| COPY → staging → final | + UPSERT | 7.29 | 68,552 | 7.16–7.61 | +36.4% | +304.4% |
+```bash
+uv run generate --orders 1000 --orders-per-file 500
+```
 
-#### Order item
+Reference tables only:
 
-| Method | Configuration | Median s | Rows/s | Range s | Δ previous | Δ base |
-|---|---|---:|---:|---:|---:|---:|
-| execute_values | Base | 35.94 | 48,705 | 34.74–36.49 | — | — |
-| execute_values | + CHECK | 37.20 | 47,057 | 35.91–38.15 | +3.5% | +3.5% |
-| execute_values | + PK / UNIQUE | 43.23 | 40,494 | 40.82–49.13 | +16.2% | +20.3% |
-| execute_values | + FK | 59.24 | 29,553 | 56.03–63.87 | +37.0% | +64.8% |
-| execute_values | + UPSERT | 66.87 | 26,179 | 63.38–70.71 | +12.9% | +86.0% |
-| COPY → staging → final | Base | 6.93 | 252,601 | 6.80–7.02 | — | — |
-| COPY → staging → final | + CHECK | 7.50 | 233,419 | 7.30–7.79 | +8.2% | +8.2% |
-| COPY → staging → final | + PK / UNIQUE | 13.56 | 129,058 | 13.17–14.06 | +80.9% | +95.7% |
-| COPY → staging → final | + FK | 28.56 | 61,294 | 27.75–29.39 | +110.6% | +312.1% |
-| COPY → staging → final | + UPSERT | 37.73 | 46,402 | 35.83–38.08 | +32.1% | +444.4% |
+```bash
+uv run generate --base-only
+```
 
-PK/UNIQUE and foreign-key checks are the largest contributors. FK checks add 110.6% over the PK/UNIQUE case for staged order-item loading.
+Generated files are written below `data/` by default:
 
-### Full-schema method comparison
+```text
+data/brand.csv                  data/product.csv
+data/category.csv               data/promotion.csv
+data/seller.csv                 data/promotion_product.csv
+data/customer.csv
+data/orders/order_part_0001.csv
+data/order_items/order_item_part_0001.csv
+```
 
-CHECK, PK/UNIQUE, FK, and UPSERT enabled; one excluded warm-up and five randomized measured runs.
+## Load the dataset
 
-| Table | Method | Median s | Median rows/s | Range s |
-|---|---|---:|---:|---:|
-| order | execute_values | 14.38 | 34,759 | 13.76–15.13 |
-| order | COPY → staging → final | 7.29 | 68,570 | 6.94–7.31 |
-| order_item | execute_values | 64.47 | 27,153 | 62.63–65.08 |
-| order_item | COPY → staging → final | 35.05 | 49,947 | 34.68–36.00 |
+Create the schema if necessary, then load all files:
 
-COPY through staging was 1.97× faster for order and 1.84× faster for order-item under the full schema.
+```bash
+uv run load
+```
+
+Useful options:
+
+```bash
+uv run load --schema-only
+uv run load --skip-schema --data-dir data
+uv run load --config database.ini --section postgresql
+```
+
+### Loading model
+
+| Table group | Strategy | Transaction boundary |
+|---|---|---|
+| `brand` through `promotion_product` | Parameterized batched `execute_values` UPSERT | One CSV file / table |
+| `order`, `order_item` | `COPY` CSV → unlogged staging → final-table UPSERT → staging truncate | One generated part file |
+
+The loader processes parents before children and each order part before its corresponding item part. It preserves CSV row order because generated numeric foreign keys rely on predictable PostgreSQL IDs.
+
+## Reliability behavior
+
+- **UPSERT:** uses each table's stable code key (`*_code` / `promotion_product_code`) rather than a generated primary key.
+- **Checkpoint:** after a successful file load, a `(table_name, file_name)` row with row count and SHA-256 checksum is inserted in the same transaction as the data.
+- **Restart:** an unchanged completed file is skipped; a filename with changed contents raises a checksum mismatch; an absent checkpoint loads or retries the whole file.
+- **Rollback:** a failing row rolls back all data and the checkpoint for that file or part. Large `order`/`order_item` parts retry once; small files do not have an automatic retry loop.
+- **Sequences:** before loading, the target serial sequence is aligned to the actual maximum key. This prevents a rolled-back attempt from shifting expected generated IDs.
+- **Concurrency:** the loader takes an exclusive lock on the final target table and rechecks the checkpoint after the lock, preventing two concurrent attempts from both applying the same file.
+
+This design assumes a clean or compatible database: parent IDs must match the generated one-based file positions. The loader intentionally does not remap foreign keys by business code.
+
+## Testing
+
+```bash
+uv run python -m unittest discover -s tests -q
+```
+
+- `tests/unit/` checks deterministic generation, contracts, temporal rules, CSV headers, validation-before-write, and order/item calculations.
+- `tests/integration/` uses an isolated PostgreSQL schema to test schema creation, checkpoints, rollback, retry, constraints, staging cleanup, and concurrent same-file loads.
+- `tests/performance/` is reserved for manual benchmarks and is excluded from normal discovery.
+
+## Benchmark snapshot
+
+Historical manual measurements used 500,000 orders and 1,750,656 order items, with five measured runs after warm-up. Under the full schema (checks, PK/UNIQUE, FKs, and UPSERT), `COPY → staging → final` outperformed `execute_values`:
+
+| Table | `execute_values` median | COPY/staging median | Relative improvement |
+|---|---:|---:|---:|
+| `order` | 14.38 s / 34,759 rows/s | 7.29 s / 68,570 rows/s | 1.97× |
+| `order_item` | 64.47 s / 27,153 rows/s | 35.05 s / 49,947 rows/s | 1.84× |
+
+PK/UNIQUE indexes and foreign-key checks were the largest observed costs, especially for `order_item`. These are environment-specific measurements, not production capacity guarantees.
+
+## Design decisions and trade-offs
+
+- CSV keeps generation inspectable and supports streaming, at the cost of more disk I/O than a direct database generator.
+- Staging plus COPY is used only where volume warrants the added path; smaller tables stay simple and debuggable with parameterized UPSERTs.
+- File-level checkpoints favor straightforward recovery over fine-grained resume or additional metadata tables.
+- Expected positional IDs avoid pre-generating database primary keys in Python, but require controlled load order and a compatible database state.
+
+## Current limitations and next steps
+
+- No order or item ID remapping for an already-populated database.
+- No checkpoint pruning, partial-file resume, parallel loading, or batching/checkpoint tuning controls.
+- No production benchmark harness is currently committed; benchmark values above are recorded manual results.
+- `stock_qty` is a snapshot attribute; generation does not decrement it across orders.
+
+Possible next steps include a repeatable benchmark runner, configurable retry policy, `COPY` support for additional tables, explicit database migration tooling, and ID/business-key remapping for integration with pre-existing data.
