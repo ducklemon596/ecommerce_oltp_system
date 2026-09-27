@@ -376,6 +376,17 @@ def _load_large_part_once(
                     pg_sql.Identifier(config.table)
                 )
             )
+            locked_checkpoint = _checkpoint_in_transaction(
+                db_cursor, config.table, csv_path.name
+            )
+            if locked_checkpoint:
+                if locked_checkpoint[0] != checksum:
+                    raise CheckpointMismatchError(
+                        f"CHECKSUM MISMATCH for {config.table} {csv_path.name}: source file changed"
+                    )
+                database.commit()
+                print(f"SKIPPED {config.table} {csv_path.name} (checkpoint after lock).")
+                return LoadOutcome(locked_checkpoint[1], skipped=True)
             _synchronize_sequence(db_cursor, config)
             db_cursor.execute(
                 pg_sql.SQL("TRUNCATE TABLE {}").format(
@@ -501,6 +512,17 @@ def load_table(database: connection, config: TableLoad, csv_path: Path) -> LoadO
                     pg_sql.Identifier(config.table)
                 )
             )
+            locked_checkpoint = _checkpoint_in_transaction(
+                db_cursor, config.table, csv_path.name
+            )
+            if locked_checkpoint:
+                if locked_checkpoint[0] != checksum:
+                    raise CheckpointMismatchError(
+                        f"CHECKSUM MISMATCH for {config.table} {csv_path.name}: source file changed"
+                    )
+                database.commit()
+                print(f"SKIPPED {config.table} {csv_path.name} (checkpoint after lock).")
+                return LoadOutcome(locked_checkpoint[1], skipped=True)
             _synchronize_sequence(db_cursor, config)
             statement = _upsert_statement(config)
 
@@ -544,13 +566,17 @@ def _file_checksum(csv_path: Path) -> str:
 
 def _checkpoint(database: connection, table_name: str, file_name: str):
     with database.cursor() as db_cursor:
-        db_cursor.execute(
-            "SELECT file_checksum, row_count FROM load_checkpoint WHERE table_name = %s AND file_name = %s",
-            (table_name, file_name),
-        )
-        result = db_cursor.fetchone()
+        result = _checkpoint_in_transaction(db_cursor, table_name, file_name)
     database.rollback()
     return result
+
+
+def _checkpoint_in_transaction(db_cursor: cursor, table_name: str, file_name: str):
+    db_cursor.execute(
+        "SELECT file_checksum, row_count FROM load_checkpoint WHERE table_name = %s AND file_name = %s",
+        (table_name, file_name),
+    )
+    return db_cursor.fetchone()
 
 
 def _write_checkpoint(db_cursor: cursor, table_name: str, file_name: str, checksum: str, row_count: int) -> None:
