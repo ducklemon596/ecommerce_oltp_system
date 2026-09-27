@@ -3,7 +3,7 @@
 import csv
 from pathlib import Path
 
-from ecommerce_oltp_system.shared.models import GeneratedData, Record
+from ecommerce_oltp_system.generators.models import GeneratedData, Record
 
 
 TABLE_OUTPUTS = (

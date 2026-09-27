@@ -14,7 +14,7 @@ dependencies = [
 
 [project.scripts]
 ecommerce-oltp-system = "ecommerce_oltp_system:main"
-ecommerce-load-data = "ecommerce_oltp_system.loader:main"
+ecommerce-load-data = "ecommerce_oltp_system.load:main"
 ecommerce-generate-orders = "ecommerce_oltp_system.generators.orders:main"
 
 [build-system]

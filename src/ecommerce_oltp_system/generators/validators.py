@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 
-from ecommerce_oltp_system.shared.constants import (
+from ecommerce_oltp_system.generators.constants import (
     BRAND_COUNT,
     CREATED_BY,
     CUSTOMER_COUNT,
@@ -28,7 +28,7 @@ from ecommerce_oltp_system.shared.constants import (
     WINDOW_END,
     WINDOW_START,
 )
-from ecommerce_oltp_system.shared.models import Record
+from ecommerce_oltp_system.generators.models import Record
 
 
 def _validate_unique_field(records: list[Record], field: str) -> None:

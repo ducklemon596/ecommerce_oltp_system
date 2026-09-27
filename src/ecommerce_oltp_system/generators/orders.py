@@ -12,7 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 from time import perf_counter
 
-from ecommerce_oltp_system.shared.constants import (
+from ecommerce_oltp_system.generators.constants import (
     CREATED_BY,
     MAX_ORDER_ITEM_QUANTITY,
     MAX_ORDER_ITEMS,
@@ -27,9 +27,9 @@ from ecommerce_oltp_system.shared.constants import (
     SEED,
     WINDOW_END,
 )
-from ecommerce_oltp_system.shared.exporter import csv_value
-from ecommerce_oltp_system.shared.models import Record
-from ecommerce_oltp_system.shared.validators import validate_order, validate_order_items
+from ecommerce_oltp_system.generators.exporter import csv_value
+from ecommerce_oltp_system.generators.models import Record
+from ecommerce_oltp_system.generators.validators import validate_order, validate_order_items
 
 
 ORDER_COLUMNS = (

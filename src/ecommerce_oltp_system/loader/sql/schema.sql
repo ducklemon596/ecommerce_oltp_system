@@ -227,3 +227,13 @@ CREATE UNLOGGED TABLE IF NOT EXISTS staging_order_item (
     loaded_at TIMESTAMP
 );
 
+
+
+CREATE TABLE IF NOT EXISTS load_checkpoint (
+    table_name TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_checksum CHAR(64) NOT NULL,
+    row_count BIGINT NOT NULL CHECK (row_count >= 0),
+    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (table_name, file_name)
+);

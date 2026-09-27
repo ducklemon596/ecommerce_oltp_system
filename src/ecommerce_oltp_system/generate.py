@@ -5,8 +5,8 @@ from pathlib import Path
 
 from .generators.orders import print_summary
 from .generators.pipeline import generate_all_files, generate_and_write_data
-from .shared.constants import ORDER_COUNT, ORDERS_PER_FILE, SEED
-from .shared.models import GeneratedData
+from .generators.constants import ORDER_COUNT, ORDERS_PER_FILE, SEED
+from .generators.models import GeneratedData
 
 
 def _arguments() -> argparse.Namespace:
