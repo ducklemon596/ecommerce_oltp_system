@@ -1,0 +1,14 @@
+Aggregate: actual 7460.468..9242.280 ms, rows=14399, loops=1
+  Gather Merge: actual 7460.075..9225.507 ms, rows=43187, loops=1
+    Aggregate: actual 7391.150..8769.083 ms, rows=14396, loops=3
+      Sort: actual 7390.668..7956.746 ms, rows=5833663, loops=3
+        Hash Join: actual 2087.860..4463.398 ms, rows=5833663, loops=3
+          Hash Join: actual 1908.714..3055.931 ms, rows=5833663, loops=3
+            Seq Scan on order_item: actual 0.053..603.169 ms, rows=5833663, loops=3
+            Hash: actual 356.318..356.320 ms, rows=1666667, loops=3
+              Seq Scan on order: actual 0.028..161.956 ms, rows=1666667, loops=3
+          Hash: actual 179.118..179.118 ms, rows=3000, loops=3
+            Seq Scan on product: actual 178.450..178.725 ms, rows=3000, loops=3
+Planning time: 0.26 ms
+Execution time: 9287.759 ms
+Full details and buffer counts: 07_product_monthly_revenue.plan.json

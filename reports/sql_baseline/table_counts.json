@@ -1,0 +1,38 @@
+{
+  "brand": {
+    "csv_rows": 20,
+    "database_rows": 20
+  },
+  "category": {
+    "csv_rows": 25,
+    "database_rows": 25
+  },
+  "seller": {
+    "csv_rows": 50,
+    "database_rows": 50
+  },
+  "customer": {
+    "csv_rows": 30000,
+    "database_rows": 30000
+  },
+  "product": {
+    "csv_rows": 3000,
+    "database_rows": 3000
+  },
+  "promotion": {
+    "csv_rows": 30,
+    "database_rows": 30
+  },
+  "promotion_product": {
+    "csv_rows": 500,
+    "database_rows": 500
+  },
+  "order": {
+    "csv_rows": 5000000,
+    "database_rows": 5000000
+  },
+  "order_item": {
+    "csv_rows": 17500990,
+    "database_rows": 17500990
+  }
+}

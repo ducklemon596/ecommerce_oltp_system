@@ -1,0 +1,5 @@
+Sort: actual 598.357..599.247 ms, rows=25154, loops=1
+  Index Scan on order_item: actual 3.013..588.820 ms, rows=25154, loops=1
+Planning time: 0.104 ms
+Execution time: 600.33 ms
+Full details and buffer counts: 03_items_by_product.plan.json

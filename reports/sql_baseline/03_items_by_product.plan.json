@@ -1,0 +1,121 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Sort",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 332972.6,
+      "Total Cost": 332985.89,
+      "Plan Rows": 5314,
+      "Plan Width": 62,
+      "Actual Startup Time": 598.357,
+      "Actual Total Time": 599.247,
+      "Actual Rows": 25154,
+      "Actual Loops": 1,
+      "Output": [
+        "order_item_id",
+        "order_item_code",
+        "order_id",
+        "product_id",
+        "order_date",
+        "quantity",
+        "unit_price",
+        "subtotal"
+      ],
+      "Sort Key": [
+        "order_item.order_date",
+        "order_item.order_item_id"
+      ],
+      "Sort Method": "quicksort",
+      "Sort Space Used": 3127,
+      "Sort Space Type": "Memory",
+      "Shared Hit Blocks": 6,
+      "Shared Read Blocks": 72025,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 61,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0,
+      "Plans": [
+        {
+          "Node Type": "Index Scan",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Scan Direction": "Forward",
+          "Index Name": "order_item_source_unique",
+          "Relation Name": "order_item",
+          "Schema": "public",
+          "Alias": "order_item",
+          "Startup Cost": 0.44,
+          "Total Cost": 332643.79,
+          "Plan Rows": 5314,
+          "Plan Width": 62,
+          "Actual Startup Time": 3.013,
+          "Actual Total Time": 588.82,
+          "Actual Rows": 25154,
+          "Actual Loops": 1,
+          "Output": [
+            "order_item_id",
+            "order_item_code",
+            "order_id",
+            "product_id",
+            "order_date",
+            "quantity",
+            "unit_price",
+            "subtotal"
+          ],
+          "Index Cond": "(order_item.product_id = 1)",
+          "Rows Removed by Index Recheck": 0,
+          "Filter": "(NOT order_item.is_deleted)",
+          "Rows Removed by Filter": 0,
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 72025,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 61,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        }
+      ]
+    },
+    "Settings": {},
+    "Planning": {
+      "Shared Hit Blocks": 23,
+      "Shared Read Blocks": 0,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.104,
+    "Triggers": [],
+    "JIT": {
+      "Functions": 6,
+      "Options": {
+        "Inlining": false,
+        "Optimization": false,
+        "Expressions": true,
+        "Deforming": true
+      },
+      "Timing": {
+        "Generation": 0.367,
+        "Inlining": 0.0,
+        "Optimization": 0.222,
+        "Emission": 2.76,
+        "Total": 3.348
+      }
+    },
+    "Execution Time": 600.33
+  }
+]

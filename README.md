@@ -84,10 +84,22 @@ host=localhost
 port=5432
 database=ecommerce_oltp
 user=postgres
-password=change-me
+password=postgres
 ```
 
 The loader requires `host`, `database`, `user`, and `password`; `port` is optional. Use `--config` and `--section` to select a different file or INI section.
+
+### Local Docker database
+
+Start PostgreSQL and pgAdmin for local development:
+
+```bash
+docker compose up -d
+```
+
+The default PostgreSQL connection is `localhost:5432`, database `ecommerce_oltp`, user `postgres`, password `postgres`. pgAdmin is available at [http://localhost:5050](http://localhost:5050) with `admin@example.com` / `admin`. In pgAdmin, register a server using host `postgres`, port `5432`, and the PostgreSQL credentials. Set matching values in `database.ini` before running `uv run load`.
+
+The Compose PostgreSQL service reuses the existing external database volume. Do not run another PostgreSQL container using that volume at the same time. `docker compose down -v` removes the pgAdmin volume but preserves the external PostgreSQL data.
 
 ## Commands
 
@@ -174,6 +186,13 @@ uv run python -m unittest discover -s tests -q
 - `tests/unit/` checks deterministic generation, contracts, temporal rules, CSV headers, validation-before-write, and order/item calculations.
 - `tests/integration/` uses an isolated PostgreSQL schema to test schema creation, checkpoints, rollback, retry, constraints, staging cleanup, and concurrent same-file loads.
 - `tests/performance/` is reserved for manual benchmarks and is excluded from normal discovery.
+
+## SQL reports
+
+The [SQL reporting guide](reports/README.md) describes the eight business queries,
+data verification, and runtime measurement method. The
+[baseline results](reports/sql_baseline/README.md) include row counts, query
+result previews, and links to complete execution plans and local result CSVs.
 
 ## Benchmark snapshot
 

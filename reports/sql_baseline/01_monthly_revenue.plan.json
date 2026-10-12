@@ -1,0 +1,140 @@
+[
+  {
+    "Plan": {
+      "Node Type": "Aggregate",
+      "Strategy": "Sorted",
+      "Partial Mode": "Simple",
+      "Parallel Aware": false,
+      "Async Capable": false,
+      "Startup Cost": 877991.41,
+      "Total Cost": 1015489.34,
+      "Plan Rows": 4999925,
+      "Plan Width": 44,
+      "Actual Startup Time": 1884.089,
+      "Actual Total Time": 2535.0,
+      "Actual Rows": 5,
+      "Actual Loops": 1,
+      "Output": [
+        "((date_trunc('month'::text, order_date))::date)",
+        "count(*)",
+        "sum(total_amount)"
+      ],
+      "Group Key": [
+        "((date_trunc('month'::text, \"order\".order_date))::date)"
+      ],
+      "Shared Hit Blocks": 3,
+      "Shared Read Blocks": 75766,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 30323,
+      "Temp Written Blocks": 30402,
+      "Plans": [
+        {
+          "Node Type": "Sort",
+          "Parent Relationship": "Outer",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 877991.41,
+          "Total Cost": 890491.22,
+          "Plan Rows": 4999925,
+          "Plan Width": 14,
+          "Actual Startup Time": 1711.581,
+          "Actual Total Time": 2009.191,
+          "Actual Rows": 5000000,
+          "Actual Loops": 1,
+          "Output": [
+            "((date_trunc('month'::text, order_date))::date)",
+            "total_amount"
+          ],
+          "Sort Key": [
+            "((date_trunc('month'::text, \"order\".order_date))::date)"
+          ],
+          "Sort Method": "external merge",
+          "Sort Space Used": 121304,
+          "Sort Space Type": "Disk",
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 75766,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 30323,
+          "Temp Written Blocks": 30402,
+          "Plans": [
+            {
+              "Node Type": "Seq Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Relation Name": "order",
+              "Schema": "public",
+              "Alias": "order",
+              "Startup Cost": 0.0,
+              "Total Cost": 150764.88,
+              "Plan Rows": 4999925,
+              "Plan Width": 14,
+              "Actual Startup Time": 164.758,
+              "Actual Total Time": 928.603,
+              "Actual Rows": 5000000,
+              "Actual Loops": 1,
+              "Output": [
+                "(date_trunc('month'::text, order_date))::date",
+                "total_amount"
+              ],
+              "Filter": "(NOT \"order\".is_deleted)",
+              "Rows Removed by Filter": 0,
+              "Shared Hit Blocks": 0,
+              "Shared Read Blocks": 75766,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        }
+      ]
+    },
+    "Settings": {},
+    "Planning": {
+      "Shared Hit Blocks": 73,
+      "Shared Read Blocks": 9,
+      "Shared Dirtied Blocks": 0,
+      "Shared Written Blocks": 0,
+      "Local Hit Blocks": 0,
+      "Local Read Blocks": 0,
+      "Local Dirtied Blocks": 0,
+      "Local Written Blocks": 0,
+      "Temp Read Blocks": 0,
+      "Temp Written Blocks": 0
+    },
+    "Planning Time": 0.476,
+    "Triggers": [],
+    "JIT": {
+      "Functions": 9,
+      "Options": {
+        "Inlining": true,
+        "Optimization": true,
+        "Expressions": true,
+        "Deforming": true
+      },
+      "Timing": {
+        "Generation": 1.088,
+        "Inlining": 113.196,
+        "Optimization": 30.101,
+        "Emission": 21.456,
+        "Total": 165.841
+      }
+    },
+    "Execution Time": 2582.881
+  }
+]
