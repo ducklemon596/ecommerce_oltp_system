@@ -1,0 +1,153 @@
+{
+  "captured_at": "2026-10-13T08:51:54.607683+00:00",
+  "database": "ecommerce_oltp_sql_bench",
+  "postgresql_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+  "row_counts": {
+    "order": 5000000,
+    "order_item": 17500990
+  },
+  "settings": {
+    "effective_cache_size": {
+      "setting": "524288",
+      "unit": "8kB"
+    },
+    "effective_io_concurrency": {
+      "setting": "1",
+      "unit": null
+    },
+    "hash_mem_multiplier": {
+      "setting": "2",
+      "unit": null
+    },
+    "jit": {
+      "setting": "on",
+      "unit": null
+    },
+    "max_parallel_workers_per_gather": {
+      "setting": "2",
+      "unit": null
+    },
+    "random_page_cost": {
+      "setting": "4",
+      "unit": null
+    },
+    "shared_buffers": {
+      "setting": "16384",
+      "unit": "8kB"
+    },
+    "work_mem": {
+      "setting": "4096",
+      "unit": "kB"
+    }
+  },
+  "constraints": [
+    {
+      "table": "\"order\"",
+      "name": "order_created_check",
+      "definition": "CHECK ((created_at >= order_date))"
+    },
+    {
+      "table": "\"order\"",
+      "name": "order_customer_id_fkey",
+      "definition": "FOREIGN KEY (customer_id) REFERENCES customer(customer_id)"
+    },
+    {
+      "table": "\"order\"",
+      "name": "order_order_code_key",
+      "definition": "UNIQUE (order_code)"
+    },
+    {
+      "table": "\"order\"",
+      "name": "order_pkey",
+      "definition": "PRIMARY KEY (order_id)"
+    },
+    {
+      "table": "\"order\"",
+      "name": "order_status_check",
+      "definition": "CHECK (((status)::text = ANY (ARRAY[('PLACED'::character varying)::text, ('PAID'::character varying)::text, ('SHIPPED'::character varying)::text, ('DELIVERED'::character varying)::text, ('CANCELLED'::character varying)::text, ('RETURNED'::character varying)::text])))"
+    },
+    {
+      "table": "\"order\"",
+      "name": "order_total_check",
+      "definition": "CHECK ((total_amount >= (0)::numeric))"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_created_check",
+      "definition": "CHECK ((created_at >= order_date))"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_order_id_fkey",
+      "definition": "FOREIGN KEY (order_id) REFERENCES \"order\"(order_id)"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_order_item_code_key",
+      "definition": "UNIQUE (order_item_code)"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_pkey",
+      "definition": "PRIMARY KEY (order_item_id)"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_price_check",
+      "definition": "CHECK ((unit_price > (0)::numeric))"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_product_id_fkey",
+      "definition": "FOREIGN KEY (product_id) REFERENCES product(product_id)"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_quantity_check",
+      "definition": "CHECK ((quantity > 0))"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_source_unique",
+      "definition": "UNIQUE (order_id, product_id)"
+    },
+    {
+      "table": "order_item",
+      "name": "order_item_subtotal_check",
+      "definition": "CHECK ((subtotal = ((quantity)::numeric * unit_price)))"
+    }
+  ],
+  "stages": {
+    "A": {
+      "label": "Original SQL / No performance indexes",
+      "performance_indexes": []
+    },
+    "B": {
+      "label": "Optimized SQL / No performance indexes",
+      "performance_indexes": []
+    },
+    "C": {
+      "label": "Optimized SQL / Four performance indexes",
+      "performance_indexes": [
+        "order_active_date_idx",
+        "order_active_amount_idx",
+        "order_item_active_product_idx",
+        "product_active_seller_idx"
+      ]
+    }
+  },
+  "method": {
+    "warmup_runs": 1,
+    "measured_runs_per_query": 5,
+    "query_order": "randomized with fixed per-round seeds",
+    "cache": "warm; not flushed",
+    "explain": "EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS, FORMAT JSON)"
+  },
+  "index_sql": "indexes.sql",
+  "performance_index_sizes_bytes": {
+    "order_active_date_idx": 378640794,
+    "order_active_amount_idx": 414711808,
+    "order_item_active_product_idx": 1656120934,
+    "product_active_seller_idx": 104858
+  }
+}

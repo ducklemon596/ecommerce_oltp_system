@@ -1,222 +1,139 @@
-# E-commerce OLTP synthetic data pipeline
+# E-commerce OLTP: generation, loading, reporting, and SQL optimization
 
-A deterministic Python generator and PostgreSQL loader for a realistic e-commerce OLTP dataset. The project is designed to exercise relational data generation, temporal integrity, transactional loading, recovery behavior, and large-file ingestion—not to model every e-commerce workflow.
+A Python/Faker and PostgreSQL project covering database design, deterministic
+synthetic data, reliable file loading, parameterized reporting, and measured SQL
+optimization. The dataset spans January–May 2025: **5 million orders and roughly
+17.5 million order items**, plus catalog, customer, seller, and promotion data.
 
-## What it provides
-
-- Generates nine related tables with Faker and a configurable seed.
-- Writes small reference/dependent tables as CSV and streams large `order` and `order_item` data into paired part files.
-- Creates PostgreSQL tables, constraints, audit columns, staging tables, and load checkpoints.
-- Uses idempotent, checksum-protected loading with transactions, retries for large parts, and sequence synchronization.
-- Includes unit tests for generator contracts and PostgreSQL integration tests for rollback, retry, checkpoint, and concurrency behavior.
-
-## Data flow
+## Architecture
 
 ```text
-seed + configuration
-        |
-        v
-reference/master generation -> validation -> reference CSV files
-        |                                      |
-        +--------------------------------------+ 
-                                               v
-                              streamed order + order_item part files
-                                               |
-                                               v
-schema -> dependency-aware PostgreSQL loader -> final tables
+PostgreSQL schema and constraints
+        ↓
+seeded generation → validation → CSV reference tables + streamed order/item parts
+        ↓
+transactional loading → staging/COPY or batched UPSERT → checkpoints
+        ↓
+12 reporting functions → execution plans → benchmark evidence → index decisions
 ```
 
-See [generators/README.md](src/ecommerce_oltp_system/generators/README.md) and [loader/README.md](src/ecommerce_oltp_system/loader/README.md) for implementation-level guidance.
+Products reference brands, categories, and sellers; orders reference customers;
+items connect orders to products. Promotion-product mappings connect promotions
+to the catalog. Database-managed PKs, business-key uniqueness, FKs, CHECKs, and
+audit columns protect the nine final tables.
 
-## Tables and relationships
+## Start locally
 
-| Area | Tables | Main relationships |
-|---|---|---|
-| Catalog | `brand`, `category`, `seller`, `product` | A product references one brand, category, and seller. Categories may have a parent category. |
-| Customers | `customer` | An order references one customer. |
-| Promotions | `promotion`, `promotion_product` | Promotion-product maps a promotion to a product. |
-| Transactions | `order`, `order_item` | An order has items; each item references one product. |
-
-All final tables use database-managed serial/identity primary keys, stable business/source codes, audit fields, and `loaded_at DEFAULT CURRENT_TIMESTAMP`. `order` is quoted in SQL because it is a reserved word.
-
-## Repository layout
-
-```text
-src/ecommerce_oltp_system/
-  generate.py                 # generation CLI
-  load.py                     # loading CLI
-  generators/
-    pipeline.py               # end-to-end generation orchestration
-    reference/                # master/dependent generation and validation
-    orders/                   # streamed order generation and validation
-  loader/
-    pipeline.py               # schema-and-load orchestration
-    db/                       # connection, schema, serial sequences
-    checkpoint/               # checksum/checkpoint repository
-    strategies/               # small-table and large-part loaders
-```
-
-## Requirements and installation
-
-- Python 3.12 or later
-- PostgreSQL available to the machine running the loader
-- [uv](https://docs.astral.sh/uv/) (recommended)
+Requirements: Python 3.12+, PostgreSQL 16, Docker Compose for the supplied
+database setup, and [uv](https://docs.astral.sh/uv/) for dependency installation.
 
 ```bash
 uv sync
-```
-
-The project declares `Faker` and `psycopg2-binary` in `pyproject.toml`; `uv sync` installs them.
-
-## Database configuration
-
-Create a local configuration file. It is ignored by Git.
-
-```bash
 cp database.ini.example database.ini
-```
-
-Edit the `[postgresql]` values in `database.ini`:
-
-```ini
-[postgresql]
-host=localhost
-port=5432
-database=ecommerce_oltp
-user=postgres
-password=postgres
-```
-
-The loader requires `host`, `database`, `user`, and `password`; `port` is optional. Use `--config` and `--section` to select a different file or INI section.
-
-### Local Docker database
-
-Start PostgreSQL and pgAdmin for local development:
-
-```bash
 docker compose up -d
 ```
 
-The default PostgreSQL connection is `localhost:5432`, database `ecommerce_oltp`, user `postgres`, password `postgres`. pgAdmin is available at [http://localhost:5050](http://localhost:5050) with `admin@example.com` / `admin`. In pgAdmin, register a server using host `postgres`, port `5432`, and the PostgreSQL credentials. Set matching values in `database.ini` before running `uv run load`.
+Edit the ignored `database.ini` for your connection. Local defaults:
+`localhost:5432`, database `ecommerce_oltp`, user/password `postgres`.
+Compose reuses the existing external PostgreSQL volume named in
+`docker-compose.yml`; an already populated volume retains its data. Avoid
+starting another PostgreSQL container against that volume simultaneously.
 
-The Compose PostgreSQL service reuses the existing external database volume. Do not run another PostgreSQL container using that volume at the same time. `docker compose down -v` removes the pgAdmin volume but preserves the external PostgreSQL data.
+pgAdmin: [localhost:5050](http://localhost:5050), login
+`admin@example.com` / `admin`. Register PostgreSQL using host `postgres`,
+port `5432`, and the database credentials above.
 
-## Commands
+## Generate and load
 
-| Command | Purpose |
-|---|---|
-| `uv run generate` | Generate all tables and CSV files |
-| `uv run load` | Create the schema and load CSV files into PostgreSQL |
-
-These are the only public console entry points.
-
-## Generate the dataset
-
-Generate the complete default dataset (5,000,000 orders, 100,000 orders per part):
+These are the only two public console commands:
 
 ```bash
-uv run generate
-```
-
-For a smaller development run:
-
-```bash
+uv run generate                                 # complete configured dataset
 uv run generate --orders 1000 --orders-per-file 500
+uv run generate --base-only                      # reference tables only
+uv run load                                     # schema + dependency-ordered load
 ```
 
-Reference tables only:
+Small/medium files use batched UPSERT; each order/item part uses
+`COPY → staging → final UPSERT`. Each file is one transaction, including its
+SHA-256 checkpoint. A matching checkpoint skips a completed file; changed
+contents fail clearly. Failed loads roll back data/checkpoints, and retries
+synchronize sequences to stored PK maxima. Parents load before dependents.
+
+Generation streams large tables and validates before final file writes. Expected
+positional FK IDs assume predictable database allocation; this is a deliberate
+benchmark simplification. See the [generator](src/ecommerce_oltp_system/generators/README.md)
+and [loader](src/ecommerce_oltp_system/loader/README.md) guides for limits and options.
+
+## Reporting
+
+[functions.sql](database/reporting/functions.sql) contains the 12 canonical
+functions covering all 13 original requirements. Public dynamic signatures,
+half-open date windows, NULL/empty-array filters, soft deletion, and order-versus-
+item revenue semantics are preserved.
+
+Install functions after loading the schema; using the supplied container:
 
 ```bash
-uv run generate --base-only
+docker exec -i ecommerce-postgres psql -U postgres -d ecommerce_oltp \
+  -v ON_ERROR_STOP=1 -1 < database/reporting/functions.sql
 ```
 
-Generated files are written below `data/` by default:
+Run examples from [examples.sql](database/reporting/examples.sql).
+The [function catalog and requirements mapping](database/reporting/README.md)
+explain each report and the workload-driven index recommendations.
+
+## Optimization evidence
+
+The [main SQL optimization report](reports/sql_optimization/README.md) compares
+original SQL → rewritten SQL → rewritten SQL with four additional indexes,
+using one warm-up plus five measured `EXPLAIN (ANALYZE, BUFFERS)` runs per case.
+
+- SQL rewrites improved key broad aggregates about **2.0–2.8×**.
+- Product lookup improved about **73×** with the index set.
+- Highest-value lookup fell from **682 ms to 0.041 ms**.
+- The added index set cost about **2.28 GiB**, with approximately **23% order**
+  and **10% item** INSERT-time overhead in the isolated write experiment.
+- Broad scans do not uniformly benefit; a seller summary regressed with indexes.
+
+The [historical dynamic-report benchmark](reports/dynamic_reports/README.md)
+also records a top-brand SQL regression. Its archived candidate differs from the
+current canonical SQL; historical timings are not new-function performance claims.
+All four approved definitions remain in [indexes.sql](database/indexes.sql).
+The date index remains provisional pending an individual-contribution experiment.
+
+## Repository map
 
 ```text
-data/brand.csv                  data/product.csv
-data/category.csv               data/promotion.csv
-data/seller.csv                 data/promotion_product.csv
-data/customer.csv
-data/orders/order_part_0001.csv
-data/order_items/order_item_part_0001.csv
+src/ecommerce_oltp_system/    generators/, loader/, generate.py, load.py
+database/                   schema.sql, indexes.sql, reporting/{functions,examples}.sql
+benchmarks/                 cases.json and preserved original/rewritten SQL
+scripts/                    benchmark runners, source verification, snapshots
+reports/                    sql_optimization/, dynamic_reports/, data_validation/
+tests/                      unit/, integration/, performance/
+experiments/partitioning/    undeployed migration proposal and comparison utility
+docs/                       course assignment, cleanup inventory and provenance
+data/                       generated datasets (ignored)
 ```
 
-## Load the dataset
+`database/schema.sql` links to the single packaged schema resource, so SQL users
+and installed loaders share the same DDL. Generation/loading modules and the
+existing schema constraints remain unchanged by repository cleanup.
 
-Create the schema if necessary, then load all files:
+## Validate and reproduce
 
 ```bash
-uv run load
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
-Useful options:
+Integration tests use isolated PostgreSQL schemas. Large benchmarks are manual
+and excluded from normal tests. Workloads, measured-run counts, filters, seeds,
+and representative-plan choices live in [cases.json](benchmarks/cases.json).
+[Benchmark instructions](benchmarks/README.md) explain isolated clones and stable
+`latest/` outputs that are replaced on subsequent runs. Frozen historical reports
+require explicit `--overwrite`; restructuring did not rerun them.
 
-```bash
-uv run load --schema-only
-uv run load --skip-schema --data-dir data
-uv run load --config database.ini --section postgresql
-```
-
-### Loading model
-
-| Table group | Strategy | Transaction boundary |
-|---|---|---|
-| `brand` through `promotion_product` | Parameterized batched `execute_values` UPSERT | One CSV file / table |
-| `order`, `order_item` | `COPY` CSV → unlogged staging → final-table UPSERT → staging truncate | One generated part file |
-
-The loader processes parents before children and each order part before its corresponding item part. It preserves CSV row order because generated numeric foreign keys rely on predictable PostgreSQL IDs.
-
-## Reliability behavior
-
-- **UPSERT:** uses each table's stable code key (`*_code` / `promotion_product_code`) rather than a generated primary key.
-- **Checkpoint:** after a successful file load, a `(table_name, file_name)` row with row count and SHA-256 checksum is inserted in the same transaction as the data.
-- **Restart:** an unchanged completed file is skipped; a filename with changed contents raises a checksum mismatch; an absent checkpoint loads or retries the whole file.
-- **Rollback:** a failing row rolls back all data and the checkpoint for that file or part. Large `order`/`order_item` parts retry once; small files do not have an automatic retry loop.
-- **Sequences:** before loading, the target serial sequence is aligned to the actual maximum key. This prevents a rolled-back attempt from shifting expected generated IDs.
-- **Concurrency:** the loader takes an exclusive lock on the final target table and rechecks the checkpoint after the lock, preventing two concurrent attempts from both applying the same file.
-
-This design assumes a clean or compatible database: parent IDs must match the generated one-based file positions. The loader intentionally does not remap foreign keys by business code.
-
-## Testing
-
-```bash
-uv run python -m unittest discover -s tests -q
-```
-
-- `tests/unit/` checks deterministic generation, contracts, temporal rules, CSV headers, validation-before-write, and order/item calculations.
-- `tests/integration/` uses an isolated PostgreSQL schema to test schema creation, checkpoints, rollback, retry, constraints, staging cleanup, and concurrent same-file loads.
-- `tests/performance/` is reserved for manual benchmarks and is excluded from normal discovery.
-
-## SQL reports
-
-The [SQL reporting guide](reports/README.md) describes the eight business queries,
-data verification, and runtime measurement method. The
-[baseline results](reports/sql_baseline/README.md) include row counts, query
-result previews, and links to complete execution plans and local result CSVs.
-
-## Benchmark snapshot
-
-Historical manual measurements used 500,000 orders and 1,750,656 order items, with five measured runs after warm-up. Under the full schema (checks, PK/UNIQUE, FKs, and UPSERT), `COPY → staging → final` outperformed `execute_values`:
-
-| Table | `execute_values` median | COPY/staging median | Relative improvement |
-|---|---:|---:|---:|
-| `order` | 14.38 s / 34,759 rows/s | 7.29 s / 68,570 rows/s | 1.97× |
-| `order_item` | 64.47 s / 27,153 rows/s | 35.05 s / 49,947 rows/s | 1.84× |
-
-PK/UNIQUE indexes and foreign-key checks were the largest observed costs, especially for `order_item`. These are environment-specific measurements, not production capacity guarantees.
-
-## Design decisions and trade-offs
-
-- CSV keeps generation inspectable and supports streaming, at the cost of more disk I/O than a direct database generator.
-- Staging plus COPY is used only where volume warrants the added path; smaller tables stay simple and debuggable with parameterized UPSERTs.
-- File-level checkpoints favor straightforward recovery over fine-grained resume or additional metadata tables.
-- Expected positional IDs avoid pre-generating database primary keys in Python, but require controlled load order and a compatible database state.
-
-## Current limitations and next steps
-
-- No order or item ID remapping for an already-populated database.
-- No checkpoint pruning, partial-file resume, parallel loading, or batching/checkpoint tuning controls.
-- No production benchmark harness is currently committed; benchmark values above are recorded manual results.
-- `stock_qty` is a snapshot attribute; generation does not decrement it across orders.
-
-Possible next steps include a repeatable benchmark runner, configurable retry policy, `COPY` support for additional tables, explicit database migration tooling, and ID/business-key remapping for integration with pre-existing data.
+Partitioning is [experimental and outstanding](experiments/partitioning/README.md),
+not deployed. There are no materialized summaries or production partition
+migrations. Next useful experiments are date-index ablation and selective versus
+broad tests of the consolidated top-brand function.

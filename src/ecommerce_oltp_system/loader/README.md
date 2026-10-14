@@ -129,4 +129,4 @@ Recorded manual benchmarks with full final-table constraints found `COPY → sta
 | `strategies/small_table.py` | Batched UPSERT strategy |
 | `strategies/large_part.py` | COPY/staging/UPSERT/retry strategy |
 | `parsing.py` | CSV header and PostgreSQL value conversion |
-| `sql/schema.sql` | Final tables, staging tables, and checkpoint DDL |
+| `sql/schema.sql` | Single packaged DDL resource; also exposed by [database/schema.sql](../../../database/schema.sql) for SQL users |

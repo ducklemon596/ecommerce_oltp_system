@@ -1,0 +1,149 @@
+{
+  "old_function_sql_sha256": "f55b08afd6cd62958c81a27cf6c90948a2d339f00a6ed6d88ce8a17b3305a48c",
+  "optimized_function_sql_sha256": "0638f0a0c817990ad4546a721a42502f815465a83e2266b51a05d02c1afb5180",
+  "date_window": {
+    "start_inclusive": "2025-01-01",
+    "end_exclusive": "2025-06-01"
+  },
+  "contracts_by_version": {
+    "old": {
+      "monthly_revenue": {
+        "columns": [
+          "month",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 5
+      },
+      "daily_revenue": {
+        "columns": [
+          "date",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 151
+      },
+      "seller_performance": {
+        "columns": [
+          "seller_id",
+          "seller_name",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 11
+      },
+      "top_products_per_brand": {
+        "columns": [
+          "brand_id",
+          "brand_name",
+          "product_id",
+          "product_name",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 100
+      },
+      "order_status_summary": {
+        "columns": [
+          "status",
+          "total_orders",
+          "total_revenue"
+        ],
+        "result_rows": 6
+      }
+    },
+    "optimized": {
+      "monthly_revenue": {
+        "columns": [
+          "month",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 5
+      },
+      "daily_revenue": {
+        "columns": [
+          "date",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 151
+      },
+      "seller_performance": {
+        "columns": [
+          "seller_id",
+          "seller_name",
+          "total_orders",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 11
+      },
+      "top_products_per_brand": {
+        "columns": [
+          "brand_id",
+          "brand_name",
+          "product_id",
+          "product_name",
+          "total_quantity",
+          "total_revenue"
+        ],
+        "result_rows": 100
+      },
+      "order_status_summary": {
+        "columns": [
+          "status",
+          "total_orders",
+          "total_revenue"
+        ],
+        "result_rows": 6
+      }
+    }
+  },
+  "filters": {
+    "product_ids": [
+      1,
+      2,
+      3
+    ],
+    "seller_ids": [
+      39,
+      49,
+      47
+    ],
+    "category_ids": [
+      18
+    ],
+    "brand_ids": [
+      13
+    ]
+  },
+  "result_equivalence_differing_rows": {
+    "old": {
+      "monthly_revenue": 0,
+      "daily_revenue": 0,
+      "seller_performance": 0,
+      "top_products_per_brand": 0,
+      "order_status_summary": 0
+    },
+    "optimized": {
+      "monthly_revenue": 0,
+      "daily_revenue": 0,
+      "seller_performance": 0,
+      "top_products_per_brand": 0,
+      "order_status_summary": 0
+    }
+  },
+  "report_calls": {
+    "monthly_revenue": "SELECT * FROM report_monthly_revenue(DATE '2025-01-01', DATE '2025-06-01')",
+    "daily_revenue": "SELECT * FROM report_daily_revenue(DATE '2025-01-01', DATE '2025-06-01', ARRAY[1, 2, 3]::INTEGER[])",
+    "seller_performance": "SELECT * FROM report_seller_performance(DATE '2025-01-01', DATE '2025-06-01', ARRAY[18]::INTEGER[], ARRAY[13]::INTEGER[])",
+    "top_products_per_brand": "SELECT * FROM report_top_products_per_brand(DATE '2025-01-01', DATE '2025-06-01', ARRAY[39, 49, 47]::INTEGER[], 5)",
+    "order_status_summary": "SELECT * FROM report_order_status_summary(DATE '2025-01-01', DATE '2025-06-01', ARRAY[39, 49, 47]::INTEGER[], ARRAY[18]::INTEGER[])"
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "captured_on": "2026-10-14",
+  "purpose": "Byte-preserved retained SQL and historical benchmark artifacts during repository restructuring.",
+  "files": [
+    {
+      "original": "reports/index_benchmark/summary.csv",
+      "current": "reports/sql_optimization/summary.csv",
+      "sha256": "5caec1515d9bb72aaec2d494ce6c78d95ee71458add039709f69d8d139f10e26"
+    },
+    {
+      "original": "reports/dynamic_reports/summary.csv",
+      "current": "reports/dynamic_reports/summary.csv",
+      "sha256": "662bf6336cc019e9b51dcdf62b60835478dfdec468b136dc90c4cc951de5bdd9"
+    },
+    {
+      "original": "reports/index_benchmark/measurements.csv",
+      "current": "reports/sql_optimization/measurements.csv",
+      "sha256": "f2c2a383805020022709a13a78e7ae9b90623c97517addf00f2b40719be5082b"
+    },
+    {
+      "original": "reports/dynamic_reports/measurements.csv",
+      "current": "reports/dynamic_reports/measurements.csv",
+      "sha256": "a326dfd160258939a1567ab8208547591d05549de9479eb5161943b20c617121"
+    },
+    {
+      "original": "reports/index_benchmark/environment.json",
+      "current": "reports/sql_optimization/environment.json",
+      "sha256": "55eff0567f1b80fd754c886a64153dfbc685027362fb205251c768b1ae2c12ea"
+    },
+    {
+      "original": "reports/dynamic_reports/environment.json",
+      "current": "reports/dynamic_reports/environment.json",
+      "sha256": "9e2d1590b66f579ae587606d1b812eedbee4ec3a0f4e5e33040597594505c436"
+    },
+    {
+      "original": "reports/index_benchmark/validation.json",
+      "current": "reports/sql_optimization/validation.json",
+      "sha256": "2fd462d7f7a87a4f91618b6c919b28c93fc6a59ad517dc46c2fbdabe2327d56e"
+    },
+    {
+      "original": "reports/dynamic_reports/validation.json",
+      "current": "reports/dynamic_reports/validation.json",
+      "sha256": "9ffee912fc842d61cd0b1ada92c9ffb389d083528b017e347087bf649adad103"
+    },
+    {
+      "original": "reports/sql_baseline/environment.json",
+      "current": "reports/sql_optimization/baseline/environment.json",
+      "sha256": "a2df9104b21d4f9392ca99173423f75e1ade9a345f14ee9ef3132587d52a3ec4"
+    },
+    {
+      "original": "reports/sql_baseline/query_summary.json",
+      "current": "reports/sql_optimization/baseline/query_summary.json",
+      "sha256": "182ccb8ff84cb7ea3cec88fb95ea9cea2f41fb023f0148b130969dfe3bcc0e25"
+    },
+    {
+      "original": "reports/sql_baseline/data_verification.json",
+      "current": "reports/data_validation/data_verification.json",
+      "sha256": "2d442f067e05bdcbd84dc091c8f5ded034260624c1d9407ec2469d374045dc6e"
+    },
+    {
+      "original": "reports/sql_baseline/table_counts.json",
+      "current": "reports/data_validation/table_counts.json",
+      "sha256": "6cd46db936a3e2f7874f03f9c8852a77cfdf4712bb72989bcb2bb567bc187a47"
+    },
+    {
+      "original": "database/reporting/report_functions.sql",
+      "current": "database/reporting/functions.sql",
+      "sha256": "5f140a5a19267ecb876a02d28dc56118e3919ef009dc188b5b660c4bb5475c07"
+    },
+    {
+      "original": "src/ecommerce_oltp_system/loader/sql/schema.sql",
+      "current": "database/schema.sql",
+      "sha256": "c3bc54e85c25c6402059a28a23fe290a499a36246ca17317589c471059add3a6"
+    },
+    {
+      "original": "reports/index_benchmark/indexes.sql",
+      "current": "database/indexes.sql",
+      "sha256": "3948249dc4978ce9fd0d370bb50633788f0ff7d7bade22e3d9e4b9eddb0d49de"
+    },
+    {
+      "original": "benchmarks/queries/dynamic_original.sql",
+      "current": "benchmarks/dynamic_original.sql",
+      "sha256": "54e9adee529c058e5de3b24146a412bdecb1fa2f76270d6f4747cf869edc10d4"
+    },
+    {
+      "original": "benchmarks/queries/dynamic_optimized_20261013.sql",
+      "current": "benchmarks/dynamic_optimized_20261013.sql",
+      "sha256": "0638f0a0c817990ad4546a721a42502f815465a83e2266b51a05d02c1afb5180"
+    },
+    {
+      "original": "reports/index_benchmark/plans/02_orders_by_seller_and_date_optimized_with_index.txt",
+      "current": "reports/sql_optimization/plans/02_orders_by_seller_and_date_optimized_with_index.txt",
+      "sha256": "47d59777cdc2adf9bfbadc6dd5c3925449bf30709e36e6e5a4c856f87aab37d1"
+    },
+    {
+      "original": "reports/index_benchmark/plans/03_items_by_product_optimized_no_index.txt",
+      "current": "reports/sql_optimization/plans/03_items_by_product_optimized_no_index.txt",
+      "sha256": "2c73da22e11722eeacc8b626e3462131900a7a4a835247d3aba54c11a91f71d9"
+    },
+    {
+      "original": "reports/index_benchmark/plans/03_items_by_product_optimized_with_index.txt",
+      "current": "reports/sql_optimization/plans/03_items_by_product_optimized_with_index.txt",
+      "sha256": "52a171bc3e2ff690d3e5337acd9e807e578347c89a37a9ffcb238e9cb297cc36"
+    },
+    {
+      "original": "reports/index_benchmark/plans/04_highest_value_order_optimized_with_index.txt",
+      "current": "reports/sql_optimization/plans/04_highest_value_order_optimized_with_index.txt",
+      "sha256": "696924bc937ac083bf466e4426237dac0a0ca47a9dd1661cc77be7ea3ece5027"
+    },
+    {
+      "original": "reports/index_benchmark/plans/05_top_products_by_quantity_original_no_index.txt",
+      "current": "reports/sql_optimization/plans/05_top_products_by_quantity_original_no_index.txt",
+      "sha256": "37a0fa43892483d739647f9256c4dc04c2279d6492c5de80242a5518dd5788c2"
+    },
+    {
+      "original": "reports/index_benchmark/plans/05_top_products_by_quantity_optimized_no_index.txt",
+      "current": "reports/sql_optimization/plans/05_top_products_by_quantity_optimized_no_index.txt",
+      "sha256": "2f5d270e9df5a66194434a877f26ec15ecdd7d1ffc1eb8a0fdf3f841d3f56534"
+    },
+    {
+      "original": "reports/index_benchmark/plans/06_orders_by_seller_march_2025_optimized_no_index.txt",
+      "current": "reports/sql_optimization/plans/06_orders_by_seller_march_2025_optimized_no_index.txt",
+      "sha256": "86966828a6820bc0ce1b723fa50e02ad681f58536ac8cf28d600ed3618b39908"
+    },
+    {
+      "original": "reports/index_benchmark/plans/06_orders_by_seller_march_2025_optimized_with_index.txt",
+      "current": "reports/sql_optimization/plans/06_orders_by_seller_march_2025_optimized_with_index.txt",
+      "sha256": "5b5c36f8c5f1c78ac9582ead4d023887f01eddef3ac5331496d18160f3d935eb"
+    },
+    {
+      "original": "reports/index_benchmark/plans/07_product_monthly_revenue_optimized_no_index.txt",
+      "current": "reports/sql_optimization/plans/07_product_monthly_revenue_optimized_no_index.txt",
+      "sha256": "1991d3c1c136d3d08aaa61fe587ee8ba8f25fae8ace21f194bd499b1a7654a2c"
+    },
+    {
+      "original": "reports/index_benchmark/plans/08_products_sold_per_seller_optimized_with_index.txt",
+      "current": "reports/sql_optimization/plans/08_products_sold_per_seller_optimized_with_index.txt",
+      "sha256": "729a51567744cbd227fd9be8408d9cfe2a2fe2a6b1ce829d112bc2e3c8080a3b"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/monthly_revenue_old_no_indexes.txt",
+      "current": "reports/dynamic_reports/plans/monthly_revenue_old_no_indexes.txt",
+      "sha256": "7da14a56758d055611abea77bcdfd6ba25cc49599d76c07443996defa7f93e39"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/monthly_revenue_new_no_indexes.txt",
+      "current": "reports/dynamic_reports/plans/monthly_revenue_new_no_indexes.txt",
+      "sha256": "552e508c6bc69f81e4a7aa1c26e26d9c2f393dd05701ec16a48cfef66168bde6"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/daily_revenue_new_no_indexes.txt",
+      "current": "reports/dynamic_reports/plans/daily_revenue_new_no_indexes.txt",
+      "sha256": "b3172ccf09ddecf786835a90673b293432b8401831db38c6704c1886e1b3ab6a"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/daily_revenue_new_with_indexes.txt",
+      "current": "reports/dynamic_reports/plans/daily_revenue_new_with_indexes.txt",
+      "sha256": "163ea46f45969a67dccfcc9859b5b0a2158bd929c9915fc51c8c04c05869c441"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/top_products_per_brand_old_no_indexes.txt",
+      "current": "reports/dynamic_reports/plans/top_products_per_brand_old_no_indexes.txt",
+      "sha256": "1199ba5972da4b5489667e3db3f6411a55db0fcbae2435cacc6fc40a00e0541b"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/top_products_per_brand_new_no_indexes.txt",
+      "current": "reports/dynamic_reports/plans/top_products_per_brand_new_no_indexes.txt",
+      "sha256": "06d24101146d466eac05453c917a50ec53d28e2a64ff78ec679478c9b743df42"
+    },
+    {
+      "original": "reports/dynamic_reports/plans/top_products_per_brand_new_with_indexes.txt",
+      "current": "reports/dynamic_reports/plans/top_products_per_brand_new_with_indexes.txt",
+      "sha256": "d2bd5dca939642eaa2ed6d4d0ec9a6e50c1e5f7a2bfe65c10546b163d405a6c5"
+    }
+  ]
+}

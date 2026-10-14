@@ -1,0 +1,4 @@
+Sort: Actual Rows=25154; Plan Rows=5261; Actual Loops=1; Actual Total Time=298.982; Shared Hit Blocks=3; Shared Read Blocks=71997; Temp Read Blocks=0; Temp Written Blocks=0; Sort Method=quicksort; Sort Space Used=3127
+  Index Scan on order_item using order_item_source_unique: Index Cond=(order_item.product_id = 1); Filter=(NOT order_item.is_deleted); Actual Rows=25154; Plan Rows=5261; Actual Loops=1; Actual Total Time=292.163; Shared Hit Blocks=3; Shared Read Blocks=71997; Temp Read Blocks=0; Temp Written Blocks=0
+Planning Time: 0.080 ms
+Execution Time: 300.248 ms

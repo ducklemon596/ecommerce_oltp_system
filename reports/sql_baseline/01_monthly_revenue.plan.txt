@@ -1,6 +1,0 @@
-Aggregate: actual 1884.089..2535.000 ms, rows=5, loops=1
-  Sort: actual 1711.581..2009.191 ms, rows=5000000, loops=1
-    Seq Scan on order: actual 164.758..928.603 ms, rows=5000000, loops=1
-Planning time: 0.476 ms
-Execution time: 2582.881 ms
-Full details and buffer counts: 01_monthly_revenue.plan.json

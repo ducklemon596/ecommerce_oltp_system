@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "schema": "database/schema.sql",
+  "indexes": "database/indexes.sql",
+  "functions": "database/reporting/functions.sql",
+  "examples": "database/reporting/examples.sql",
+  "historical_output_directories": [
+    "reports/sql_optimization",
+    "reports/dynamic_reports",
+    "reports/sql_optimization/baseline",
+    "reports/data_validation"
+  ],
+  "analytical": {
+    "original_sql": "benchmarks/original_queries.sql",
+    "optimized_sql": "benchmarks/optimized_queries.sql",
+    "historical_report": "reports/sql_optimization",
+    "output": "reports/sql_optimization/latest",
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "shuffle_seed": 9461,
+    "cases": [
+      {
+        "id": "01_monthly_revenue",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "02_orders_by_seller_and_date",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "03_items_by_product",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "04_highest_value_order",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "05_top_products_by_quantity",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "06_orders_by_seller_march_2025",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "07_product_monthly_revenue",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      },
+      {
+        "id": "08_products_sold_per_seller",
+        "fixed_parameters": "Embedded in the archived SQL block and protected by historical hashes."
+      }
+    ],
+    "representative_plans": [
+      {
+        "query": "02_orders_by_seller_and_date",
+        "stage": "optimized_with_index"
+      },
+      {
+        "query": "03_items_by_product",
+        "stage": "optimized_no_index"
+      },
+      {
+        "query": "03_items_by_product",
+        "stage": "optimized_with_index"
+      },
+      {
+        "query": "04_highest_value_order",
+        "stage": "optimized_with_index"
+      },
+      {
+        "query": "05_top_products_by_quantity",
+        "stage": "original_no_index"
+      },
+      {
+        "query": "05_top_products_by_quantity",
+        "stage": "optimized_no_index"
+      },
+      {
+        "query": "06_orders_by_seller_march_2025",
+        "stage": "optimized_no_index"
+      },
+      {
+        "query": "06_orders_by_seller_march_2025",
+        "stage": "optimized_with_index"
+      },
+      {
+        "query": "07_product_monthly_revenue",
+        "stage": "optimized_no_index"
+      },
+      {
+        "query": "08_products_sold_per_seller",
+        "stage": "optimized_with_index"
+      }
+    ]
+  },
+  "dynamic": {
+    "original_sql": "benchmarks/dynamic_original.sql",
+    "historical_candidate_sql": "benchmarks/dynamic_optimized_20261013.sql",
+    "historical_report": "reports/dynamic_reports",
+    "output": "reports/dynamic_reports/latest",
+    "start_date": "2025-01-01",
+    "end_date": "2025-06-01",
+    "top_n": 5,
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "shuffle_seed": 7831,
+    "filters": {
+      "product_ids": [
+        1,
+        2,
+        3
+      ],
+      "seller_ids": [
+        39,
+        49,
+        47
+      ],
+      "category_ids": [
+        18
+      ],
+      "brand_ids": [
+        13
+      ]
+    },
+    "representative_plans": [
+      {
+        "query": "monthly_revenue",
+        "stage": "old_no_indexes"
+      },
+      {
+        "query": "monthly_revenue",
+        "stage": "new_no_indexes"
+      },
+      {
+        "query": "daily_revenue",
+        "stage": "new_no_indexes"
+      },
+      {
+        "query": "daily_revenue",
+        "stage": "new_with_indexes"
+      },
+      {
+        "query": "top_products_per_brand",
+        "stage": "old_no_indexes"
+      },
+      {
+        "query": "top_products_per_brand",
+        "stage": "new_no_indexes"
+      },
+      {
+        "query": "top_products_per_brand",
+        "stage": "new_with_indexes"
+      }
+    ]
+  }
+}

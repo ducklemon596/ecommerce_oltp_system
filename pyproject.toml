@@ -1,7 +1,7 @@
 [project]
 name = "ecommerce-oltp-system"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deterministic e-commerce data generation, PostgreSQL loading, and SQL reporting benchmarks"
 readme = "README.md"
 authors = [
     { name = "ducklemon596", email = "thienquang050906@gmai.com" }

@@ -1,0 +1,3 @@
+Index Only Scan on order_item using order_item_active_product_idx: Index Cond=(order_item.product_id = 1); Actual Rows=25154; Plan Rows=5303; Actual Loops=1; Actual Total Time=3.458; Shared Hit Blocks=69; Shared Read Blocks=234; Temp Read Blocks=0; Temp Written Blocks=0; Heap Fetches=0
+Planning Time: 0.082 ms
+Execution Time: 4.110 ms

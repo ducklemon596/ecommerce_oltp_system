@@ -1,0 +1,15 @@
+Limit: Actual Rows=20; Plan Rows=20; Actual Loops=1; Actual Total Time=5369.93; Shared Hit Blocks=5750; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144
+  Sort: Actual Rows=20; Plan Rows=3000; Actual Loops=1; Actual Total Time=5230.209; Shared Hit Blocks=5750; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144; Sort Method=top-N heapsort; Sort Space Used=29
+    Aggregate: Actual Rows=3000; Plan Rows=3000; Actual Loops=1; Actual Total Time=5229.54; Shared Hit Blocks=5750; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144
+      Gather Merge: Actual Rows=9000; Plan Rows=6000; Actual Loops=1; Actual Total Time=5225.678; Shared Hit Blocks=5750; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144
+        Sort: Actual Rows=3000; Plan Rows=3000; Actual Loops=3; Actual Total Time=5082.699; Shared Hit Blocks=5750; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144; Sort Method=quicksort; Sort Space Used=556
+          Aggregate: Actual Rows=3000; Plan Rows=3000; Actual Loops=3; Actual Total Time=5081.703; Shared Hit Blocks=5736; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144; Peak Memory Usage=1649
+            Hash Join: Hash Cond=(oi.product_id = p.product_id); Actual Rows=5833663; Plan Rows=7292047; Actual Loops=3; Actual Total Time=3926.862; Shared Hit Blocks=5736; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144
+              Hash Join: Hash Cond=(oi.order_id = o.order_id); Actual Rows=5833663; Plan Rows=7292047; Actual Loops=3; Actual Total Time=3082.924; Shared Hit Blocks=5559; Shared Read Blocks=372025; Temp Read Blocks=108583; Temp Written Blocks=109144
+                Seq Scan on order_item: Filter=(NOT oi.is_deleted); Actual Rows=5833663; Plan Rows=7292047; Actual Loops=3; Actual Total Time=634.728; Shared Hit Blocks=5367; Shared Read Blocks=296393; Temp Read Blocks=0; Temp Written Blocks=0
+                Hash: Actual Rows=1666667; Plan Rows=2083028; Actual Loops=3; Actual Total Time=345.008; Shared Hit Blocks=192; Shared Read Blocks=75632; Temp Read Blocks=0; Temp Written Blocks=14804; Hash Batches=64; Peak Memory Usage=5152
+                  Seq Scan on order: Filter=(NOT o.is_deleted); Actual Rows=1666667; Plan Rows=2083028; Actual Loops=3; Actual Total Time=166.349; Shared Hit Blocks=192; Shared Read Blocks=75632; Temp Read Blocks=0; Temp Written Blocks=0
+              Hash: Actual Rows=3000; Plan Rows=3000; Actual Loops=3; Actual Total Time=106.798; Shared Hit Blocks=177; Shared Read Blocks=0; Temp Read Blocks=0; Temp Written Blocks=0; Hash Batches=1; Peak Memory Usage=271
+                Seq Scan on product: Filter=(NOT p.is_deleted); Actual Rows=3000; Plan Rows=3000; Actual Loops=3; Actual Total Time=106.388; Shared Hit Blocks=177; Shared Read Blocks=0; Temp Read Blocks=0; Temp Written Blocks=0
+Planning Time: 0.340 ms
+Execution Time: 5371.496 ms

@@ -1,0 +1,116 @@
+{
+  "assumptions": {
+    "orders": 5000000,
+    "order_items": 17500990,
+    "item_order_date_mismatches": 0,
+    "missing_order_parents": 0,
+    "null_order_item_ids": 0,
+    "null_order_ids": 0,
+    "required_not_null_attributes": [
+      [
+        "\"order\"",
+        "order_id",
+        true
+      ],
+      [
+        "\"order\"",
+        "is_deleted",
+        true
+      ],
+      [
+        "order_item",
+        "order_id",
+        true
+      ],
+      [
+        "order_item",
+        "is_deleted",
+        true
+      ]
+    ]
+  },
+  "query_equivalence": [
+    {
+      "query": "01_monthly_revenue",
+      "mismatched_rows": 0,
+      "has_rewrite": false
+    },
+    {
+      "query": "02_orders_by_seller_and_date",
+      "mismatched_rows": 0,
+      "has_rewrite": false
+    },
+    {
+      "query": "03_items_by_product",
+      "mismatched_rows": 0,
+      "has_rewrite": false
+    },
+    {
+      "query": "04_highest_value_order",
+      "mismatched_rows": 0,
+      "has_rewrite": false
+    },
+    {
+      "query": "05_top_products_by_quantity",
+      "mismatched_rows": 0,
+      "has_rewrite": true
+    },
+    {
+      "query": "06_orders_by_seller_march_2025",
+      "mismatched_rows": 0,
+      "has_rewrite": true
+    },
+    {
+      "query": "07_product_monthly_revenue",
+      "mismatched_rows": 0,
+      "has_rewrite": true
+    },
+    {
+      "query": "08_products_sold_per_seller",
+      "mismatched_rows": 0,
+      "has_rewrite": true
+    }
+  ],
+  "query_versions": {
+    "01_monthly_revenue": {
+      "has_rewrite": false,
+      "original_sha256": "93e5348f0bc0d7e2f07b59a8a2585cac96894b06fb5aa582c1c28c56bb69bd7d",
+      "optimized_sha256": "93e5348f0bc0d7e2f07b59a8a2585cac96894b06fb5aa582c1c28c56bb69bd7d"
+    },
+    "02_orders_by_seller_and_date": {
+      "has_rewrite": false,
+      "original_sha256": "35459ca499aee6b942e04d50c723d9b1e2e85de72e915efbb14788514e594556",
+      "optimized_sha256": "35459ca499aee6b942e04d50c723d9b1e2e85de72e915efbb14788514e594556"
+    },
+    "03_items_by_product": {
+      "has_rewrite": false,
+      "original_sha256": "bb38fd0d2d1b412298eb0a5301d550ae8341062053488aea6ac6ab3bf63ae2e5",
+      "optimized_sha256": "bb38fd0d2d1b412298eb0a5301d550ae8341062053488aea6ac6ab3bf63ae2e5"
+    },
+    "04_highest_value_order": {
+      "has_rewrite": false,
+      "original_sha256": "568450403f27cb4de623ad13695d938bb62f972fdcd9ca0b031b3a1c3f81c4b4",
+      "optimized_sha256": "568450403f27cb4de623ad13695d938bb62f972fdcd9ca0b031b3a1c3f81c4b4"
+    },
+    "05_top_products_by_quantity": {
+      "has_rewrite": true,
+      "original_sha256": "cdbab0485037b2b5976ad764068cb0e2556ded836e558ff4257283f674bfef12",
+      "optimized_sha256": "c86379123997c5352cf7aa763bd13581b3a4c6fed8a8d6de41e11123ee10dc62"
+    },
+    "06_orders_by_seller_march_2025": {
+      "has_rewrite": true,
+      "original_sha256": "8134f401c996d967551b8b58c3e9591c63bcc3004e2df60f64527d532e50bc8b",
+      "optimized_sha256": "f03685438cc8ca34b492ca57517507e25f89ccd0d724b79aab246555687c6489"
+    },
+    "07_product_monthly_revenue": {
+      "has_rewrite": true,
+      "original_sha256": "46fd26e58352a48143d4d10a816680876307399fa576fba578b1a70c96a7e349",
+      "optimized_sha256": "1193b43cb8c26ee8b20f489dd549eaf8358df6c45c8357109f79caabc9cdf34b"
+    },
+    "08_products_sold_per_seller": {
+      "has_rewrite": true,
+      "original_sha256": "0757e30b36844702f6372867a02998a5a2e2eafa40480c7be70bdcfff04dfb25",
+      "optimized_sha256": "d0d28195c3cf43bb5b69772e50fc070e79871372d7612245c4fa7d7238cd7514"
+    }
+  }
+}

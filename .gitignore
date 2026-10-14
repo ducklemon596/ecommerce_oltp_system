@@ -1,18 +1,47 @@
-# Python-generated files
+# Python/build/local environments
 __pycache__/
-*.py[oc]
+*.py[cod]
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
+.venv/
 
-# Virtual environments
-.venv
+# Generated datasets and database exports
+/data/
+*.csv
+*.dump
+*.backup
+*.sql.gz
+*.sql.bz2
+*.sql.zst
 
-# Specification files
+# Keep concise, reproducible benchmark measurements.
+!/reports/**/summary.csv
+!/reports/**/measurements.csv
+
+# Optional full plans, query-result exports, and temporary experiments
+/reports/**/raw/
+/experiments/**/results/
+/benchmarks/tmp/
+*.tmp
+*.log
+
+# Local credentials and environment-owned configuration
+database.ini
+.env
+.env.*
+!.env.example
+.aws/
+.codex/
+
+# Editor/OS artifacts
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*~
+
+# Legacy local assignment filenames; maintained assignment lives under docs/.
 Project 03 - Python in Data.md
 Project 04 - SQL.md
-
-# data files
-*.csv
-database.ini
