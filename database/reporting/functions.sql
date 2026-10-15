@@ -1,14 +1,20 @@
 -- Canonical reporting functions; install after the application's table schema.
+-- Execute this file to deploy functions; numbered REPORT/END REPORT blocks separate definitions.
+-- For one-off SELECTs without function deployment, use queries.sql instead.
+-- queries.sql mirrors each body with sample literals; contract tests prevent drift.
 -- All windows are [start_date, end_date). NULL ID arrays disable their filter;
 -- empty arrays match no rows. Revenue includes every recorded order status.
 -- Existing five function signatures and item-vs-order timestamp choices persist.
 -- PK/FK and NOT NULL constraints are required for deleted-parent anti-joins.
 -- SQL-level aggregate CTEs below reuse existing query logic; no stored summaries.
 
--- ============================================================
--- 01. MONTHLY ITEM REVENUE: active-item subtotals, not full order totals.
+-- ==============================================================================
+-- REPORT 01 | MONTHLY ITEM REVENUE
+-- Purpose: active-item subtotals, not full order totals.
 -- Inputs: item-date window; output: one row/month with sales. No product deletion filter.
--- ============================================================
+-- Function: report_monthly_revenue
+-- Terminal: uv run ecommerce report monthly
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_monthly_revenue(
     p_start_date DATE,
     p_end_date DATE
@@ -39,12 +45,16 @@ AS $$
     GROUP BY 1
     ORDER BY 1;
 $$;
+-- END REPORT 01 | report_monthly_revenue
 
 
--- ============================================================
--- 02. DAILY ITEM REVENUE: matching product subtotals, distinct orders/day.
+-- ==============================================================================
+-- REPORT 02 | DAILY ITEM REVENUE
+-- Purpose: matching product subtotals, distinct orders/day.
 -- Inputs: item-date window and optional product list; product deletion is ignored.
--- ============================================================
+-- Function: report_daily_revenue
+-- Terminal: uv run ecommerce report daily
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_daily_revenue(
     p_start_date DATE,
     p_end_date DATE,
@@ -80,12 +90,16 @@ AS $$
     GROUP BY 1
     ORDER BY 1;
 $$;
+-- END REPORT 02 | report_daily_revenue
 
 
--- ============================================================
--- 03. SELLER PERFORMANCE: attributed item revenue, each order once per seller.
+-- ==============================================================================
+-- REPORT 03 | SELLER PERFORMANCE
+-- Purpose: attributed item revenue, each order once per seller.
 -- Inputs: item-date window and optional category/brand IDs; those dimension deletion flags are ignored.
--- ============================================================
+-- Function: report_seller_performance
+-- Terminal: uv run ecommerce report seller-performance
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_seller_performance(
     p_start_date DATE,
     p_end_date DATE,
@@ -142,14 +156,17 @@ AS $$
     WHERE NOT s.is_deleted
     ORDER BY s.seller_id;
 $$;
+-- END REPORT 03 | report_seller_performance
 
 
--- ============================================================
--- 04. TOP PRODUCTS PER BRAND REPORT
--- ============================================================
--- Top N within each brand; seller filter applies before aggregation.
+-- ==============================================================================
+-- REPORT 04 | TOP PRODUCTS PER BRAND
+-- Purpose: Top N within each brand; seller filter applies before aggregation.
 -- NULL seller arrays disable the filter; empty arrays select nothing.
 -- Use item timestamps to preserve the existing public function's contract.
+-- Function: report_top_products_per_brand
+-- Terminal: uv run ecommerce report top-products-per-brand
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_top_products_per_brand(
     p_start_date DATE, p_end_date DATE,
     p_seller_ids INTEGER[] DEFAULT NULL, p_top_n INTEGER DEFAULT 10
@@ -187,11 +204,15 @@ AS $$
     WHERE r.brand_rank <= GREATEST(COALESCE(p_top_n, 0), 0)
     ORDER BY r.brand_id, r.brand_rank;
 $$;
+-- END REPORT 04 | report_top_products_per_brand
 
--- ============================================================
--- 05. ORDER STATUS: count each qualifying order once and sum its full total.
+-- ==============================================================================
+-- REPORT 05 | ORDER STATUS SUMMARY
+-- Purpose: count each qualifying order once and sum its full total.
 -- Inputs: order-date window, optional seller/category lists qualifying through active items/products.
--- ============================================================
+-- Function: report_order_status_summary
+-- Terminal: uv run ecommerce report status
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_order_status_summary(
     p_start_date DATE,
     p_end_date DATE,
@@ -239,25 +260,37 @@ AS $$
     GROUP BY o.status
     ORDER BY o.status;
 $$;
+-- END REPORT 05 | report_order_status_summary
 
--- 06. MONTHLY ORDER REVENUE: full order totals, including orders without active items.
+-- ==============================================================================
+-- REPORT 06 | MONTHLY FULL-ORDER REVENUE
+-- Purpose: full order totals, including orders without active items.
 -- Inputs: order-date window; output: month, order count, gross order revenue.
+-- Function: report_monthly_order_revenue
+-- Terminal: uv run ecommerce report monthly-orders
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_monthly_order_revenue(
     p_start_date DATE, p_end_date DATE
 )
 RETURNS TABLE (month DATE, total_orders BIGINT, total_revenue NUMERIC)
 LANGUAGE SQL STABLE PARALLEL SAFE
 AS $$
-    SELECT DATE_TRUNC('month', o.order_date)::DATE,
-           COUNT(*), SUM(o.total_amount)
+    SELECT DATE_TRUNC('month', o.order_date)::DATE AS month,
+           COUNT(*) AS total_orders, SUM(o.total_amount) AS total_revenue
     FROM "order" o
     WHERE o.order_date >= p_start_date::TIMESTAMP
       AND o.order_date < p_end_date::TIMESTAMP AND NOT o.is_deleted
     GROUP BY 1 ORDER BY 1;
 $$;
+-- END REPORT 06 | report_monthly_order_revenue
 
--- 07. ORDER LIST: full totals of orders containing matching sellers' active items.
+-- ==============================================================================
+-- REPORT 07 | ORDERS BY SELLER
+-- Purpose: full totals of orders containing matching sellers' active items.
 -- NULL sellers means all active orders, even those without items; seller deletion is ignored.
+-- Function: report_orders_by_seller
+-- Terminal: uv run ecommerce report orders
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_orders_by_seller(
     p_start_date DATE, p_end_date DATE, p_seller_ids INTEGER[] DEFAULT NULL
 )
@@ -278,9 +311,15 @@ AS $$
       ))
     ORDER BY o.order_date, o.order_id;
 $$;
+-- END REPORT 07 | report_orders_by_seller
 
--- 08. ITEM EXPORT: active item rows only, irrespective of parent/dimension deletion.
+-- ==============================================================================
+-- REPORT 08 | ITEMS BY PRODUCT
+-- Purpose: active item rows only, irrespective of parent/dimension deletion.
 -- Inputs: item-date window and optional product IDs; output ordered by item date/ID.
+-- Function: report_items_by_product
+-- Terminal: uv run ecommerce report items
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_items_by_product(
     p_start_date DATE, p_end_date DATE, p_product_ids INTEGER[] DEFAULT NULL
 )
@@ -299,9 +338,15 @@ AS $$
       AND (p_product_ids IS NULL OR oi.product_id = ANY(p_product_ids))
     ORDER BY oi.order_date, oi.order_item_id;
 $$;
+-- END REPORT 08 | report_items_by_product
 
--- 09. HIGHEST-VALUE ORDERS: deterministic global amount ranking in an order-date window.
+-- ==============================================================================
+-- REPORT 09 | HIGHEST-VALUE ORDERS
+-- Purpose: deterministic global amount ranking in an order-date window.
 -- NULL/nonpositive Top-N returns no rows. Default 1 preserves the original highest-order query.
+-- Function: report_highest_value_orders
+-- Terminal: uv run ecommerce report highest-orders
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_highest_value_orders(
     p_start_date DATE, p_end_date DATE, p_top_n INTEGER DEFAULT 1
 )
@@ -318,10 +363,16 @@ AS $$
     ORDER BY o.total_amount DESC, o.order_id
     LIMIT GREATEST(COALESCE(p_top_n, 0), 0);
 $$;
+-- END REPORT 09 | report_highest_value_orders
 
--- 10. GLOBAL TOP PRODUCTS: units DESC then product ID (no revenue tie-break).
+-- ==============================================================================
+-- REPORT 10 | GLOBAL TOP PRODUCTS
+-- Purpose: units DESC then product ID (no revenue tie-break).
 -- Inputs: order-date window and Top-N. Aggregate before joining product labels.
 -- Keep the order join: item/order timestamp equality is not a database constraint.
+-- Function: report_top_products
+-- Terminal: uv run ecommerce report top-products
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_top_products(
     p_start_date DATE, p_end_date DATE, p_top_n INTEGER DEFAULT 20
 )
@@ -347,10 +398,16 @@ AS $$
     ORDER BY t.total_quantity DESC, p.product_id
     LIMIT GREATEST(COALESCE(p_top_n, 0), 0);
 $$;
+-- END REPORT 10 | report_top_products
 
--- 11. SELLER SALES: product types, distinct orders, line rows, units and item revenue.
--- Inputs: order-date window and optional seller IDs. Used by A06 (projection) and A08.
+-- ==============================================================================
+-- REPORT 11 | SELLER SALES
+-- Purpose: product types, distinct orders, line rows, units and item revenue.
+-- Inputs: order-date window and optional seller IDs. Also covers the March seller summary.
 -- Summed seller order counts are not a distinct platform order count.
+-- Function: report_seller_sales
+-- Terminal: uv run ecommerce report seller-sales
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_seller_sales(
     p_start_date DATE, p_end_date DATE, p_seller_ids INTEGER[] DEFAULT NULL
 )
@@ -381,10 +438,16 @@ AS $$
     WHERE NOT s.is_deleted
     ORDER BY t.total_quantity DESC, s.seller_id;
 $$;
+-- END REPORT 11 | report_seller_sales
 
--- 12. PRODUCT/MONTH SALES: active product/item/parent subtotals and units.
+-- ==============================================================================
+-- REPORT 12 | PRODUCT/MONTH REVENUE
+-- Purpose: active product/item/parent subtotals and units.
 -- Inputs: order-date window and optional product IDs. Month comes from the order,
 -- as in the original requirement, even if an item's denormalized date differs.
+-- Function: report_product_monthly_revenue
+-- Terminal: uv run ecommerce report product-monthly
+-- ==============================================================================
 CREATE OR REPLACE FUNCTION report_product_monthly_revenue(
     p_start_date DATE, p_end_date DATE, p_product_ids INTEGER[] DEFAULT NULL
 )
@@ -410,3 +473,4 @@ AS $$
     WHERE NOT p.is_deleted
     ORDER BY t.month, p.product_id;
 $$;
+-- END REPORT 12 | report_product_monthly_revenue

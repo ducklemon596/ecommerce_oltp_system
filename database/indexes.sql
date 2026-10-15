@@ -1,5 +1,5 @@
 -- Run each statement separately in autocommit mode (CONCURRENTLY cannot run
--- inside a transaction). Kept outside queries/ so it is not a benchmark query.
+-- inside a transaction). This is the single source of performance-index DDL.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS order_active_date_idx
     ON "order" (order_date, order_id)
     INCLUDE (order_code, customer_id, status, total_amount)
