@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import csv
 import random
 from bisect import bisect_right
@@ -345,38 +344,6 @@ def _rate(row_count: int, elapsed_seconds: float) -> float:
     return row_count / elapsed_seconds if elapsed_seconds else 0.0
 
 
-def _arguments() -> argparse.Namespace:
-    """Parse command-line arguments."""
-    parser = argparse.ArgumentParser(
-        description="Stream benchmark-scale order and order-item CSV files."
-    )
-    parser.add_argument("--data-dir", type=Path, default=Path("data"))
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        help="Output root; defaults to --data-dir.",
-    )
-    parser.add_argument("--orders", type=int, default=ORDER_COUNT)
-    parser.add_argument("--orders-per-file", type=int, default=ORDERS_PER_FILE)
-    parser.add_argument("--seed", type=int, default=SEED)
-    return parser.parse_args()
-
-
-def main() -> None:
-    """Command-line entry point for streaming order generation."""
-
-    args = _arguments()
-    stats = generate_order_files(
-        data_dir=args.data_dir,
-        output_dir=args.output_dir,
-        order_count=args.orders,
-        orders_per_file=args.orders_per_file,
-        seed=args.seed,
-    )
-    print_summary(stats)
-
-
-
 def load_customer_references(csv_path: str | Path) -> list[CustomerReference]:
     """Read the customer inputs needed by the order-streaming pipeline.
 
@@ -498,9 +465,3 @@ def require_columns(path: Path, fieldnames: list[str] | None, required: set[str]
 def _reference_id(record: CustomerReference | ProductReference) -> int:
     """Return either reference type's future positional database key."""
     return record.customer_id if isinstance(record, CustomerReference) else record.product_id
-
-
-if __name__ == "__main__":
-    main()
-
-

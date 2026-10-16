@@ -1,8 +1,17 @@
 # Reporting catalog
 
-[functions.sql](functions.sql) is the canonical SQL implementation.
-[queries.sql](queries.sql) contains the **same 12 SQL bodies with literal sample
-parameters**, in the same order: complete SELECTs, not function calls.
+Owns SQL aggregation, attribution, filters, and rankings. Python only binds
+parameters and exports results; it does not duplicate business calculations.
+
+## File overview
+
+| File | Purpose |
+|---|---|
+| [functions.sql](functions.sql) | Canonical definitions of all 12 parameterized PostgreSQL reports |
+| [queries.sql](queries.sql) | The same SQL bodies, in catalog order, with executable example literals |
+| [original_queries.sql](original_queries.sql) | Original baseline SELECTs retained for educational comparison, with provenance and scope warnings |
+
+Standalone examples are complete SELECTs, not function calls.
 Contract tests detect divergence; integration tests compare values, ordering, and
 column names on fixtures that include soft deletions and mismatched item dates.
 
@@ -10,6 +19,12 @@ Both SQL files use matching numbered `REPORT` / `END REPORT` comment blocks.
 Each block identifies the function, purpose, and relevant inputs. In pgAdmin,
 select one complete block from `queries.sql` to run a report; execute
 `functions.sql` only when deploying or replacing the callable functions.
+
+[original_queries.sql](original_queries.sql) preserves the authentic, unoptimized
+SELECT implementations recovered from Git commit `fc35293`. It is a benchmark
+baseline and educational reference, not another production reporting layer.
+Original all-history scopes and timestamp choices are documented in that file;
+the final functions and examples above remain the optimized implementations.
 
 ## Coverage: 13 requirements, 12 functions
 
@@ -68,15 +83,19 @@ Seller-sales order counts cannot be summed into a distinct platform order count.
 
 ## Usage and maintenance
 
-### Terminal reports
+### Automatic CSV exports
 
 ```bash
-uv run ecommerce report list
+uv run report                         # save every report
+uv run report monthly                 # save one report
+uv run report all --only monthly daily
+uv run report monthly --output-dir reports/custom
+uv run report list
 uv run ecommerce report --help
 uv run ecommerce report monthly --start 2025-03-01 --end 2025-04-01
-uv run ecommerce report seller-performance --categories 1,2 --brands 2,10,30
+uv run ecommerce report seller-performance --categories 6,7 --brands 1,2
 uv run ecommerce report top-products-per-brand --sellers 1,2 --top 5
-uv run ecommerce report status --sellers 1,2 --categories 3
+uv run ecommerce report status --sellers 1,2 --categories 6,7
 uv run ecommerce report daily --products null
 uv run ecommerce report daily --products ""
 uv run ecommerce report daily --products 1,2 --limit 10 --config database.ini --section postgresql
@@ -87,8 +106,22 @@ Each report exposes only its applicable filters. All use March 2025 by default;
 the standalone SQL file retains its explicit January–May sample window.
 Omit a filter or pass `null` to disable it; `""` or `[]` passes an empty array and
 matches nothing. Top-N defaults follow the functions. `--limit` defaults to 50
-displayed rows and reports truncation, without changing calculations or ranking.
-It is not a query-cost limit: large aggregates still process all qualifying data.
+CSV rows per report and reports truncation, without changing calculations or
+ranking. Increase it to export more rows. It is not a query-cost limit: large
+aggregates still process all qualifying data.
+
+Results are saved automatically under `reports/results/` (or `--output-dir`), not
+printed as terminal tables. Each CSV contains column headers and a unique filename
+such as `monthly_2025-03-01_2025-04-01_a1b2c3d4e5f6.csv`; repeated runs keep previous
+files. Empty results produce header-only CSVs. Only saved-file confirmations and
+row-limit warnings appear in the terminal. `list` and help still print normally.
+
+Bare `uv run report` and `uv run ecommerce report` save all 12 reports. Use a report
+name for one filtered report, or `all --only monthly daily` for a subset.
+All/subset mode uses NULL filters and each function's default Top-N, with shared
+date/connection/output/limit options. If a report fails, its CSV is not created;
+other reports continue, and the command exits nonzero with the failed report names.
+All required functions must already be deployed for a complete export.
 
 The lightweight runner is [reporting.py](../../src/ecommerce_oltp_system/reporting.py).
 It binds dates/arrays/limits as parameters and quotes only whitelisted function
@@ -117,12 +150,18 @@ ORDER BY seller_id;
 For educational inspection or pgAdmin EXPLAIN, use the full statements in
 `queries.sql`. Change every occurrence of a sample parameter within its statement.
 When changing logic, edit the function body first, mirror that body with the
-documented literals in `queries.sql`, and run:
+documented literals in `queries.sql`, and run the database-free contract tests:
 
 ```bash
-uv run python -m unittest discover -s tests -v
+uv run python -m unittest discover -s tests/unit -v
 ```
 
-Approved indexes remain in [../indexes.sql](../indexes.sql). Historical measurements
-and trade-offs live in the [performance report](../../reports/sql_optimization/README.md).
-They do not establish timings for every current function/filter combination.
+For value/ordering checks against PostgreSQL, follow the
+[integration-test guide](../../tests/integration/README.md) using a dedicated test database.
+
+Approved indexes remain in [../indexes.sql](../indexes.sql). Fresh full-dataset
+loading and current-query measurements are in the
+[performance report](../../reports/sql_optimization/README.md), including broad
+and selective cases, callable-versus-standalone plans, regressions, and index costs.
+Recorded parameters matter: these timings do not predict every filter combination
+or include the CLI's row limit, network transfer, or CSV export time.

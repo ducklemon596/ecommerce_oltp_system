@@ -1,0 +1,22 @@
+B3: items_product
+Measured run 3; nearest to five-run median 8.526 ms.
+Execution Time: 8.526 ms
+Planning Time: 0.088 ms
+Buffers are cumulative per node; do not sum parent and child counters.
+
+Sort | actual 7.185..7.920 ms, rows=25154, loops=1
+  Sort Key: ['oi.order_date', 'oi.order_item_id']
+  Shared Hit Blocks: 11
+  Shared Read Blocks: 292
+  Temp Read Blocks: 0
+  Temp Written Blocks: 0
+  Sort Method: quicksort
+  Sort Space Used: 3127
+  Sort Space Type: Memory
+  Index Only Scan | Relation Name=order_item | Index Name=order_item_active_product_idx | actual 0.023..3.315 ms, rows=25154, loops=1
+    Index Cond: ((oi.product_id = ANY ('{1}'::integer[])) AND (oi.order_date >= '-infinity'::timestamp without time zone) AND (oi.order_date < 'infinity'::timestamp without time zone))
+    Shared Hit Blocks: 11
+    Shared Read Blocks: 292
+    Temp Read Blocks: 0
+    Temp Written Blocks: 0
+    Heap Fetches: 0

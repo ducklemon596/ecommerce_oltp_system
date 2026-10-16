@@ -81,7 +81,7 @@ A checkpoint stores `table_name`, `file_name`, SHA-256 checksum, row count, and 
 | Large part fails | Retry the complete part once, then raise if it fails again |
 | Small table fails | Roll back and raise; a later command invocation can retry it |
 
-Before every load transaction, the loader sets the target serial sequence to the actual maximum primary key. PostgreSQL sequences advance even when a transaction rolls back; this step preserves the generator's positional-ID assumption after a retry.
+At the start of each locked load transaction, the loader sets the target serial sequence to the actual maximum primary key. PostgreSQL sequence changes survive rollback; synchronization on the next attempt preserves the generator's positional-ID assumption after a retry.
 
 An exclusive lock on the final table and a second checkpoint check after acquiring that lock prevent concurrent processes from double-loading the same file. Staging is truncated before COPY and after the final UPSERT, so stale rows cannot affect the next part.
 
@@ -90,7 +90,7 @@ An exclusive lock on the final table and a second checkpoint check after acquiri
 Use the single loading entry point:
 
 ```bash
-uv run load
+uv run ecommerce load
 ```
 
 ```bash
@@ -101,10 +101,13 @@ cp database.ini.example database.ini
 Useful variants:
 
 ```bash
-uv run load --schema-only
-uv run load --skip-schema --data-dir data
-uv run load --config database.ini --section postgresql
+uv run ecommerce init-db
+uv run ecommerce load --skip-schema --data-dir data
+uv run ecommerce load --config database.ini --section postgresql
 ```
+
+Use `uv run ecommerce load` for loading and `uv run ecommerce init-db` for
+initialization. Both commands delegate to the same pipeline and connection configuration.
 
 ## Failure expectations
 
@@ -112,21 +115,24 @@ A file/table is the recovery unit for small tables; a part file is the recovery 
 
 A changed file under an existing completed filename is deliberately rejected. Rename/regenerate consistently or resolve the checkpoint intentionally; the loader does not silently merge changed source contents.
 
-## Benchmark conclusion
+## Performance evaluation
 
-Recorded manual benchmarks with full final-table constraints found `COPY → staging → final` about 1.97× faster than `execute_values` for orders and 1.84× faster for order items. PK/UNIQUE indexes and FK checks contributed most of the observed overhead. These results justify the two-strategy design but are hardware- and configuration-dependent.
+The [canonical evaluation](../../../reports/sql_optimization/README.md) measures
+full-dataset loading with performance indexes built before or after ingestion.
+It supports building those indexes after an initial bulk load while keeping
+required integrity/UPSERT indexes enabled. Index installation is separate from
+this loader. Measurements and their limitations belong in that report, not here.
 
-## Main components
+## File overview
 
 | Location | Responsibility |
 |---|---|
-| `pipeline.py` | CLI and dependency-aware end-to-end orchestration |
-| `config.py`, `models.py`, `exceptions.py` | Table metadata, result contracts, and load errors |
-| `db/connection.py` | INI configuration parsing |
-| `db/schema.py` | Applies packaged SQL schema |
-| `db/sequences.py` | Serial synchronization before loads/retries |
-| `checkpoint/repository.py` | SHA-256 and transactional checkpoint persistence |
-| `strategies/small_table.py` | Batched UPSERT strategy |
-| `strategies/large_part.py` | COPY/staging/UPSERT/retry strategy |
-| `parsing.py` | CSV header and PostgreSQL value conversion |
-| `sql/schema.sql` | Single packaged DDL resource; also exposed by [database/schema.sql](../../../database/schema.sql) for SQL users |
+| [pipeline.py](pipeline.py) | CLI options, dependency-aware orchestration, paired parts, and timing output |
+| [config.py](config.py) | Table/CSV metadata, stable conflict keys, type mappings, batch size, and retry count |
+| [models.py](models.py) | Immutable table metadata and load/skip result contracts |
+| [exceptions.py](exceptions.py) | Transaction failure and checkpoint mismatch errors |
+| [parsing.py](parsing.py) | Exact CSV header checks and PostgreSQL value conversion |
+| [db/](db/README.md) | INI configuration, packaged schema application, and sequence alignment |
+| [checkpoint/](checkpoint/README.md) | SHA-256 file identity and transactional checkpoint persistence |
+| [strategies/](strategies/README.md) | Small-table UPSERT and large-part COPY/staging transactions |
+| [sql/](sql/README.md) | Single packaged DDL resource, also exposed by [database/schema.sql](../../../database/schema.sql) |

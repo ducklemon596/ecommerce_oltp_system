@@ -1,153 +1,2498 @@
 {
-  "captured_at": "2026-10-13T08:51:54.607683+00:00",
-  "database": "ecommerce_oltp_sql_bench",
   "postgresql_version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+  "primary_database": "ecommerce_oltp",
+  "primary_database_bytes": 7336680471,
+  "settings": [
+    [
+      "checkpoint_timeout",
+      "300",
+      "s"
+    ],
+    [
+      "effective_cache_size",
+      "524288",
+      "8kB"
+    ],
+    [
+      "fsync",
+      "on",
+      null
+    ],
+    [
+      "full_page_writes",
+      "on",
+      null
+    ],
+    [
+      "jit",
+      "on",
+      null
+    ],
+    [
+      "maintenance_work_mem",
+      "65536",
+      "kB"
+    ],
+    [
+      "max_parallel_maintenance_workers",
+      "2",
+      null
+    ],
+    [
+      "max_parallel_workers",
+      "8",
+      null
+    ],
+    [
+      "max_parallel_workers_per_gather",
+      "2",
+      null
+    ],
+    [
+      "max_wal_size",
+      "1024",
+      "MB"
+    ],
+    [
+      "random_page_cost",
+      "4",
+      null
+    ],
+    [
+      "shared_buffers",
+      "16384",
+      "8kB"
+    ],
+    [
+      "synchronous_commit",
+      "on",
+      null
+    ],
+    [
+      "work_mem",
+      "4096",
+      "kB"
+    ]
+  ],
+  "initial_other_clients": [],
+  "primary_indexes": [
+    [
+      "brand",
+      "brand_brand_code_key",
+      "CREATE UNIQUE INDEX brand_brand_code_key ON public.brand USING btree (brand_code)",
+      16384
+    ],
+    [
+      "brand",
+      "brand_brand_name_key",
+      "CREATE UNIQUE INDEX brand_brand_name_key ON public.brand USING btree (brand_name)",
+      16384
+    ],
+    [
+      "brand",
+      "brand_pkey",
+      "CREATE UNIQUE INDEX brand_pkey ON public.brand USING btree (brand_id)",
+      16384
+    ],
+    [
+      "category",
+      "category_category_code_key",
+      "CREATE UNIQUE INDEX category_category_code_key ON public.category USING btree (category_code)",
+      16384
+    ],
+    [
+      "category",
+      "category_category_name_key",
+      "CREATE UNIQUE INDEX category_category_name_key ON public.category USING btree (category_name)",
+      16384
+    ],
+    [
+      "category",
+      "category_pkey",
+      "CREATE UNIQUE INDEX category_pkey ON public.category USING btree (category_id)",
+      16384
+    ],
+    [
+      "customer",
+      "customer_customer_code_key",
+      "CREATE UNIQUE INDEX customer_customer_code_key ON public.customer USING btree (customer_code)",
+      958464
+    ],
+    [
+      "customer",
+      "customer_email_key",
+      "CREATE UNIQUE INDEX customer_email_key ON public.customer USING btree (email)",
+      2220032
+    ],
+    [
+      "customer",
+      "customer_phone_key",
+      "CREATE UNIQUE INDEX customer_phone_key ON public.customer USING btree (phone)",
+      1179648
+    ],
+    [
+      "customer",
+      "customer_pkey",
+      "CREATE UNIQUE INDEX customer_pkey ON public.customer USING btree (customer_id)",
+      688128
+    ],
+    [
+      "order",
+      "order_active_amount_idx",
+      "CREATE INDEX order_active_amount_idx ON public.\"order\" USING btree (total_amount DESC, order_id) INCLUDE (order_code, customer_id, order_date, status) WHERE (NOT is_deleted)",
+      414760960
+    ],
+    [
+      "order",
+      "order_active_date_idx",
+      "CREATE INDEX order_active_date_idx ON public.\"order\" USING btree (order_date, order_id) INCLUDE (order_code, customer_id, status, total_amount) WHERE (NOT is_deleted)",
+      378609664
+    ],
+    [
+      "order",
+      "order_order_code_key",
+      "CREATE UNIQUE INDEX order_order_code_key ON public.\"order\" USING btree (order_code)",
+      157720576
+    ],
+    [
+      "order",
+      "order_pkey",
+      "CREATE UNIQUE INDEX order_pkey ON public.\"order\" USING btree (order_id)",
+      112328704
+    ],
+    [
+      "order_item",
+      "order_item_active_product_idx",
+      "CREATE INDEX order_item_active_product_idx ON public.order_item USING btree (product_id, order_date, order_item_id) INCLUDE (order_item_code, order_id, quantity, unit_price, subtotal) WHERE (NOT is_deleted)",
+      1656086528
+    ],
+    [
+      "order_item",
+      "order_item_order_item_code_key",
+      "CREATE UNIQUE INDEX order_item_order_item_code_key ON public.order_item USING btree (order_item_code)",
+      710729728
+    ],
+    [
+      "order_item",
+      "order_item_pkey",
+      "CREATE UNIQUE INDEX order_item_pkey ON public.order_item USING btree (order_item_id)",
+      393109504
+    ],
+    [
+      "order_item",
+      "order_item_source_unique",
+      "CREATE UNIQUE INDEX order_item_source_unique ON public.order_item USING btree (order_id, product_id)",
+      393338880
+    ],
+    [
+      "product",
+      "product_active_seller_idx",
+      "CREATE INDEX product_active_seller_idx ON public.product USING btree (seller_id, product_id) WHERE (NOT is_deleted)",
+      90112
+    ],
+    [
+      "product",
+      "product_pkey",
+      "CREATE UNIQUE INDEX product_pkey ON public.product USING btree (product_id)",
+      90112
+    ],
+    [
+      "product",
+      "product_product_code_key",
+      "CREATE UNIQUE INDEX product_product_code_key ON public.product USING btree (product_code)",
+      114688
+    ],
+    [
+      "promotion",
+      "promotion_pkey",
+      "CREATE UNIQUE INDEX promotion_pkey ON public.promotion USING btree (promotion_id)",
+      16384
+    ],
+    [
+      "promotion",
+      "promotion_promotion_code_key",
+      "CREATE UNIQUE INDEX promotion_promotion_code_key ON public.promotion USING btree (promotion_code)",
+      16384
+    ],
+    [
+      "promotion_product",
+      "promotion_product_pkey",
+      "CREATE UNIQUE INDEX promotion_product_pkey ON public.promotion_product USING btree (promo_product_id)",
+      32768
+    ],
+    [
+      "promotion_product",
+      "promotion_product_promotion_product_code_key",
+      "CREATE UNIQUE INDEX promotion_product_promotion_product_code_key ON public.promotion_product USING btree (promotion_product_code)",
+      32768
+    ],
+    [
+      "promotion_product",
+      "promotion_product_unique",
+      "CREATE UNIQUE INDEX promotion_product_unique ON public.promotion_product USING btree (promotion_id, product_id)",
+      40960
+    ],
+    [
+      "seller",
+      "seller_pkey",
+      "CREATE UNIQUE INDEX seller_pkey ON public.seller USING btree (seller_id)",
+      16384
+    ],
+    [
+      "seller",
+      "seller_seller_code_key",
+      "CREATE UNIQUE INDEX seller_seller_code_key ON public.seller USING btree (seller_code)",
+      16384
+    ]
+  ],
+  "initial_disk_free_bytes": 23396003840,
+  "cpu_count": 16,
+  "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35",
+  "memory": {
+    "MemTotal": "       32579188 kB",
+    "MemAvailable": "   22858516 kB",
+    "SwapTotal": "             0 kB"
+  },
+  "source_commit": "fc3529370a3721f3f413565995a01bc4e7cd8fc0",
+  "source_hashes": {
+    "database/schema.sql": "c3bc54e85c25c6402059a28a23fe290a499a36246ca17317589c471059add3a6",
+    "database/indexes.sql": "a01572fd74db616ae0ec3a80128dfab0294a955ef0e3aa4de9ce189c63031436",
+    "database/reporting/functions.sql": "fe008a8485f5559de95c0874685db3123985624e50608d5522d6ed09685b47ec",
+    "database/reporting/queries.sql": "450b0005c81d28fd0d6163d03847c75ee0f4142c22e09f76a4cc9f68de2ab5c4",
+    "database/reporting/original_queries.sql": "525456535438d4abd5ebbea08dd71996b8e8e3bab87ef5c90d2a16ee9a1d874f"
+  },
+  "loader_parameters": {
+    "execute_values_page_size": 10000,
+    "large_part_attempts": 2,
+    "transaction_unit": "one CSV / one part",
+    "order_part_files": 50,
+    "item_part_files": 50
+  },
+  "loader_source_hashes": {
+    "src/ecommerce_oltp_system/loader/__init__.py": "024c233d7a7e800499c26939efe2a9d6c2a06dbb713c0652422a52cddad24081",
+    "src/ecommerce_oltp_system/loader/checkpoint/__init__.py": "bfa327ed5cb7c678e1608b229c7fefacd52f6ec318514384b1124258f3194be9",
+    "src/ecommerce_oltp_system/loader/checkpoint/repository.py": "b12788237ee6892700fa8ca2e987d5f8005efad472d158437b7ef83d994a4a7a",
+    "src/ecommerce_oltp_system/loader/config.py": "b3702110f4fd4aac102412943bb2562799d0cd650b805aad67b5a696cf131bba",
+    "src/ecommerce_oltp_system/loader/db/__init__.py": "a3f20835a20168c912da316500329ceb01f28bc5e11728bc780930bfa35b200c",
+    "src/ecommerce_oltp_system/loader/db/connection.py": "8d21ff75573f458b7d248f2a746cc3a4c17ddbd668e931039c28b441e97aedb8",
+    "src/ecommerce_oltp_system/loader/db/schema.py": "144469b849b0681d01e1eb6d41d2a694db4ea807ff71a08fffa5502ddce3ed97",
+    "src/ecommerce_oltp_system/loader/db/sequences.py": "b7eb4cb0c385385e0cc63190055343677b05dc856cc3e190083a88d6c13e37fa",
+    "src/ecommerce_oltp_system/loader/exceptions.py": "0295d507a3bb8cb4bf9ca97ddcc361d22d825009f568024c19d4efbc9343940f",
+    "src/ecommerce_oltp_system/loader/models.py": "8ae00b66e9302c4b6e9cda128270e7333125519d909a80979d66abd52edcaf70",
+    "src/ecommerce_oltp_system/loader/parsing.py": "690ac6158e8ea25b49b26613b25fdd9f59feaa6d844dbf976a074b244afa310a",
+    "src/ecommerce_oltp_system/loader/pipeline.py": "5535b3f154e1f08269ffcbe35969d0287fbcfac202c87ff7f4c6d65d21919af2",
+    "src/ecommerce_oltp_system/loader/sql/__init__.py": "4438ed798e53dd2ed9e2eaeada21696719c75da8d15aa4b937a2274382d293ac",
+    "src/ecommerce_oltp_system/loader/strategies/__init__.py": "8ae4d7807d87dc93e5c9e014ef1a6eb50d43d52df176457e77a75d766b322438",
+    "src/ecommerce_oltp_system/loader/strategies/large_part.py": "2323b4cbfc44014e1103800935659da63eb209fbe34e2e7bb27b0264c205f9db",
+    "src/ecommerce_oltp_system/loader/strategies/small_table.py": "0a12264fec3411403177c8b653c9931a709937a732680af7a65073b62c57fcca",
+    "src/ecommerce_oltp_system/loader/sql/schema.sql": "c3bc54e85c25c6402059a28a23fe290a499a36246ca17317589c471059add3a6"
+  },
+  "runtime": {
+    "python": "3.12.15",
+    "psycopg2": "2.9.13 (dt dec pq3 ext lo64)",
+    "uv": "uv 0.13.1 (x86_64-unknown-linux-gnu)"
+  },
+  "cpu_model": "11th Gen Intel(R) Core(TM) i7-11800H @ 2.30GHz",
+  "baseline_git_commit": "fc3529370a3721f3f413565995a01bc4e7cd8fc0",
+  "baseline_git_sources": {
+    "benchmarks/original_queries.sql": "931f73d3f8fe4893f3adc840ea0066951d4f29dda17b9a38256f8bb5eb1e60ba",
+    "benchmarks/dynamic_original.sql": "54e9adee529c058e5de3b24146a412bdecb1fa2f76270d6f4747cf869edc10d4"
+  },
+  "docker": {
+    "container": "ecommerce-postgres",
+    "image": "postgres:16",
+    "memory_limit_bytes": 0,
+    "cpu_quota": 0,
+    "nano_cpus": 0,
+    "shared_memory_bytes": 1073741824,
+    "data_mounts": [
+      {
+        "type": "volume",
+        "name": "20eeb3ce9ff37a6c1747cd1f9351b09835fbfc9e99a44847ff457020df5a58fa",
+        "destination": "/var/lib/postgresql/data"
+      }
+    ]
+  },
+  "final_disk_free_bytes": 22804787200,
+  "finished_at_utc": "2026-10-15T17:34:52.676102+00:00",
+  "input_files": [
+    {
+      "file": "brand.csv",
+      "table": "brand",
+      "rows": 20,
+      "bytes": 1916,
+      "sha256": "a604df14efe3d6f77c7ecc6d7156f1224ae30ac2a55016f670ee5768b3284fe2",
+      "mtime_ns": 1790418640680078262
+    },
+    {
+      "file": "category.csv",
+      "table": "category",
+      "rows": 25,
+      "bytes": 2033,
+      "sha256": "c758a777deaf0db679b3d59bb27d89c90f083422e178ce2db53dc9b8ea405df6",
+      "mtime_ns": 1790418640680078262
+    },
+    {
+      "file": "customer.csv",
+      "table": "customer",
+      "rows": 30000,
+      "bytes": 5683184,
+      "sha256": "658600039e398e00e217ab4d0f1b349ff9a02cd30618b75f2024210ce6f1a218",
+      "mtime_ns": 1790418640875083558
+    },
+    {
+      "file": "product.csv",
+      "table": "product",
+      "rows": 3000,
+      "bytes": 389091,
+      "sha256": "fad7a44007acf84f3fe4f9b9f2272185c18958526e8912c76ebdff94d62d3a50",
+      "mtime_ns": 1790418640894084075
+    },
+    {
+      "file": "promotion.csv",
+      "table": "promotion",
+      "rows": 30,
+      "bytes": 4443,
+      "sha256": "f1ac5e068e2b77b4267b283e0f7258ea5895adbf7d987d02728f7297dda24a68",
+      "mtime_ns": 1790418640894084075
+    },
+    {
+      "file": "promotion_product.csv",
+      "table": "promotion_product",
+      "rows": 500,
+      "bytes": 34803,
+      "sha256": "52adeb781c5873936741ca31f106181a664f211058f4adfc7a7e25b8ef1aa4da",
+      "mtime_ns": 1790418640896084129
+    },
+    {
+      "file": "seller.csv",
+      "table": "seller",
+      "rows": 50,
+      "bytes": 5783,
+      "sha256": "eebcecc12b3a6986151680bda57b9b38eb96bc01ff18faffc9aec6f3613b49e1",
+      "mtime_ns": 1790418640680078262
+    },
+    {
+      "file": "orders/order_part_0001.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11796139,
+      "sha256": "1d4a6d0ae5a15d029bb6ad6f731efb1a6ba92029de1f285a2d8d2dcd63661006",
+      "mtime_ns": 1790418646205228263
+    },
+    {
+      "file": "orders/order_part_0002.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792430,
+      "sha256": "eda5390ed3c18ddb81e4c42499f65aac9074433e038b46b7ca7e7a4cce8737b0",
+      "mtime_ns": 1790418651471371143
+    },
+    {
+      "file": "orders/order_part_0003.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792379,
+      "sha256": "73b1244f3a69a5421312c72a6bc7f40ca28443f28fc02f54f66b327a14fe78ac",
+      "mtime_ns": 1790418656674512230
+    },
+    {
+      "file": "orders/order_part_0004.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793172,
+      "sha256": "3531aa836891da8a4d9bc5584efc5fe2e7a9a89048a9d121c4b6437098bcf57c",
+      "mtime_ns": 1790418661930575655
+    },
+    {
+      "file": "orders/order_part_0005.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792927,
+      "sha256": "ef4b9bbb62154a223494e32e68d88bb54d996f0a76078f69657300a6653b4675",
+      "mtime_ns": 1790418667274579400
+    },
+    {
+      "file": "orders/order_part_0006.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793617,
+      "sha256": "42cab5515875a3311f3ee638a6ef4de28f7e3c28ae21fb42b1b57926e2ea0ed5",
+      "mtime_ns": 1790418672594585662
+    },
+    {
+      "file": "orders/order_part_0007.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793563,
+      "sha256": "6d73b6221d46b81e9683cb3223282870a0949f469f62810898e11fe9c3113507",
+      "mtime_ns": 1790418677904594376
+    },
+    {
+      "file": "orders/order_part_0008.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792896,
+      "sha256": "591c28db4271fa25db797a3b5be8b5c76e0d22f1e8d4868ff4e24c30a9269870",
+      "mtime_ns": 1790418683187605455
+    },
+    {
+      "file": "orders/order_part_0009.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792753,
+      "sha256": "e3e44270125ce56199859b6c0c45c2b4a18bbb154cbbcfde506d14997e17c91c",
+      "mtime_ns": 1790418688495618951
+    },
+    {
+      "file": "orders/order_part_0010.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793474,
+      "sha256": "9dc3cf30923ac62dbaa19df573f0e30b7fe73726be079f0ceed72bc8e060ccad",
+      "mtime_ns": 1790418693920635130
+    },
+    {
+      "file": "orders/order_part_0011.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793235,
+      "sha256": "eb03c8c4718d741ea32ea8205e8546a66769978408c746875291a2515b1f919a",
+      "mtime_ns": 1790418699527654357
+    },
+    {
+      "file": "orders/order_part_0012.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11794007,
+      "sha256": "fc0e89bb89e98e4129192dd7c7962a7118a345c6849245f37a6028d304ef4f9f",
+      "mtime_ns": 1790418705020675582
+    },
+    {
+      "file": "orders/order_part_0013.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793730,
+      "sha256": "d6e5ff24e35ef5b4440f3bf8cbd53cd40312e7275bc7f42202a96bf7bd3bc064",
+      "mtime_ns": 1790418710571699413
+    },
+    {
+      "file": "orders/order_part_0014.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792734,
+      "sha256": "bf9531492b406c3772702703b5ba6733d95a1f3fc18a946731314bf6dddc670a",
+      "mtime_ns": 1790418715964724779
+    },
+    {
+      "file": "orders/order_part_0015.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792960,
+      "sha256": "0f32df7eb56f470187978aeda8bb30bf2007bdc9fc34ec8e56f50231462eadd5",
+      "mtime_ns": 1790418721402752548
+    },
+    {
+      "file": "orders/order_part_0016.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793902,
+      "sha256": "4db6cf4df9583055118323e6313035908e84407edda12e1491c89ee6cdc383c5",
+      "mtime_ns": 1790418726872782628
+    },
+    {
+      "file": "orders/order_part_0017.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793799,
+      "sha256": "d427f427ddbe560cb992c70ee6466e5109997c543a625f6d7140b47d167fafde",
+      "mtime_ns": 1790418732301814586
+    },
+    {
+      "file": "orders/order_part_0018.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793590,
+      "sha256": "662b9246d1e81d59d5def33b6d9113b31ac4071591ed37c71e131fa3cfeed210",
+      "mtime_ns": 1790418737802849047
+    },
+    {
+      "file": "orders/order_part_0019.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793803,
+      "sha256": "e309760eb1f4c26ad471fee123f59769262c074c71cba88c000e696e07886ce6",
+      "mtime_ns": 1790418743304885573
+    },
+    {
+      "file": "orders/order_part_0020.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11794719,
+      "sha256": "5e6a26a5f8b36a4f77c439070b52ec0d7253c1f94eec82c907f98581698bc3f3",
+      "mtime_ns": 1790418748812924149
+    },
+    {
+      "file": "orders/order_part_0021.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11794097,
+      "sha256": "10c0defabbf0b6fc7bea2167d27febbc1b50169bd7187cbcbb1c86be90164b7b",
+      "mtime_ns": 1790418754367965056
+    },
+    {
+      "file": "orders/order_part_0022.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793603,
+      "sha256": "ec49d9a689b8b529ecc7cd781462d5ba51e097b8a5cde7d655c3c18229b16917",
+      "mtime_ns": 1790418759895007698
+    },
+    {
+      "file": "orders/order_part_0023.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792985,
+      "sha256": "dc86eed7d791d43ad426a6421d9862e1e74af0436e1b9766645d37d7fd9c5a02",
+      "mtime_ns": 1790418765407052127
+    },
+    {
+      "file": "orders/order_part_0024.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793934,
+      "sha256": "357e024cd441d8639a4655f24ef699cfe25452fa1224b18dcfb33c4657bcb142",
+      "mtime_ns": 1790418770883098091
+    },
+    {
+      "file": "orders/order_part_0025.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793420,
+      "sha256": "8f608142421f9b2546702d08a175e322fe9ee41293cf21c6d90ba277b10c2be8",
+      "mtime_ns": 1790418776425146437
+    },
+    {
+      "file": "orders/order_part_0026.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793564,
+      "sha256": "a1f2724afd9dcdeb53a603e39572a90694a2251c8cfa0901da3a76692828f960",
+      "mtime_ns": 1790418782015197006
+    },
+    {
+      "file": "orders/order_part_0027.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793674,
+      "sha256": "3ebfc26cc9eed50507c413e9e0e5c177155b1924803ff1ab25c41ffce29f8e35",
+      "mtime_ns": 1790418787614249458
+    },
+    {
+      "file": "orders/order_part_0028.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11794033,
+      "sha256": "2b0ed6456963045acd65cc77a0e8afbf33de4d4c8ba1c6dc10b0648061ce5f52",
+      "mtime_ns": 1790418793228303800
+    },
+    {
+      "file": "orders/order_part_0029.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11791943,
+      "sha256": "07d88647dcff95ae20d1a93b727affc938a83a01a7c8229767b9948ac563d17f",
+      "mtime_ns": 1790418798821359652
+    },
+    {
+      "file": "orders/order_part_0030.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11794008,
+      "sha256": "e94f7bf138c7eeed76a768dd73c9c69aeda9645d567eefa93c28a8d20f728c93",
+      "mtime_ns": 1790418804426417305
+    },
+    {
+      "file": "orders/order_part_0031.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793916,
+      "sha256": "1c19447a64e842d09ab68716ea2c37922a763aabb8ea81714f61752b5da562e7",
+      "mtime_ns": 1790418809997476227
+    },
+    {
+      "file": "orders/order_part_0032.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793103,
+      "sha256": "5641960eaf77701ec62bd7192e8a6ec9d3d3d52556c818f02dcea1982fb89251",
+      "mtime_ns": 1790418815605537157
+    },
+    {
+      "file": "orders/order_part_0033.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793385,
+      "sha256": "c9548ffeb2b36642baee6b04d073425c6c2f7fe39e250040c38fd5a5eb5b4350",
+      "mtime_ns": 1790418821220599732
+    },
+    {
+      "file": "orders/order_part_0034.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793100,
+      "sha256": "4db0a7c21cb2c168b210b792af32f6290d481de493e052e5a3290bc41656fab7",
+      "mtime_ns": 1790418826838663886
+    },
+    {
+      "file": "orders/order_part_0035.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793309,
+      "sha256": "08061e1d0ad418e41c282e00ccff6d0e48b2433b5a82f0afe5a30f634ae0ee11",
+      "mtime_ns": 1790418832414729059
+    },
+    {
+      "file": "orders/order_part_0036.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792072,
+      "sha256": "1475608584adcbc4bc9d1b13adf501545790f76bed852c4fa36ff799a0f413b2",
+      "mtime_ns": 1790418838043796322
+    },
+    {
+      "file": "orders/order_part_0037.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792818,
+      "sha256": "2d9fdf462f25f5839d45aab699d40eda6dc5fa96fd199af76d034e7425f9857c",
+      "mtime_ns": 1790418843646864726
+    },
+    {
+      "file": "orders/order_part_0038.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792947,
+      "sha256": "51340a00f27bee12d60e2961bc6561eef0f25f0f0843e529ae323f6cfc11a748",
+      "mtime_ns": 1790418849282934949
+    },
+    {
+      "file": "orders/order_part_0039.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793371,
+      "sha256": "ef67674edc971e58fd4e81183d747da90fae1e224dc3024badc3ec9a06edcb40",
+      "mtime_ns": 1790418854911006460
+    },
+    {
+      "file": "orders/order_part_0040.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793166,
+      "sha256": "515cbab15e9d4e4a2f0fd2ed02e4941df59651aa7ec1bdcc0a6dbc6001164ffb",
+      "mtime_ns": 1790418860514079010
+    },
+    {
+      "file": "orders/order_part_0041.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792669,
+      "sha256": "f90e73b215c8ffbc4af15f22222632f3829a2dd355431ef4e503b8f9315a86e5",
+      "mtime_ns": 1790418866102152673
+    },
+    {
+      "file": "orders/order_part_0042.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793761,
+      "sha256": "252ae72f2adf9d76e3d97ecac637acbf0a956aedabf7dee1c34357afe6a6923c",
+      "mtime_ns": 1790418871767228664
+    },
+    {
+      "file": "orders/order_part_0043.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793201,
+      "sha256": "271ae5e02ee5b009b357e6b31fe94d16f78bb1361ccae4e89e37f2cc9f3affaf",
+      "mtime_ns": 1790418877381305243
+    },
+    {
+      "file": "orders/order_part_0044.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792842,
+      "sha256": "78737caba946b97b8a4c63d661d48a8f867148d23615c2ef48afe908715d2c28",
+      "mtime_ns": 1790418883019383391
+    },
+    {
+      "file": "orders/order_part_0045.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792542,
+      "sha256": "cffb6225ba61a984b5b6c4979592d8928a3538fdfb7b459adffe7f9456865ad5",
+      "mtime_ns": 1790418888594461875
+    },
+    {
+      "file": "orders/order_part_0046.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792728,
+      "sha256": "244f1086f72d0270a30f19211c532e629a40852335f4860c89204580dcda6f71",
+      "mtime_ns": 1790418894296543351
+    },
+    {
+      "file": "orders/order_part_0047.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793109,
+      "sha256": "9da0f97687172d2b3856215c5e59bfc7194546c7f4866fed1b87625412aa4055",
+      "mtime_ns": 1790418899943625218
+    },
+    {
+      "file": "orders/order_part_0048.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793334,
+      "sha256": "34f24c1a7e9482653ed92ad8ff358e904838aa8d38068da82c30d00beda63f47",
+      "mtime_ns": 1790418905681709586
+    },
+    {
+      "file": "orders/order_part_0049.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11792542,
+      "sha256": "ad0f83c146b4f5e6147d83ab041f1ef76b9668f6d4d2852a328da3ba9895df6b",
+      "mtime_ns": 1790418911357794179
+    },
+    {
+      "file": "orders/order_part_0050.csv",
+      "table": "order",
+      "rows": 100000,
+      "bytes": 11793081,
+      "sha256": "ee2c7941a51a73a21471537848d7214af6b96abe2ca1743d6827495c10a144cd",
+      "mtime_ns": 1790418917590888349
+    },
+    {
+      "file": "order_items/order_item_part_0001.csv",
+      "table": "order_item",
+      "rows": 350364,
+      "bytes": 45530236,
+      "sha256": "99d727d67aec3fb824e69e13be2c3bdcff542cc6686fdd0f5f9f1b043c94dcab",
+      "mtime_ns": 1790418646205228263
+    },
+    {
+      "file": "order_items/order_item_part_0002.csv",
+      "table": "order_item",
+      "rows": 350138,
+      "bytes": 45890296,
+      "sha256": "ab7e7df409560c426eb8f076a3fa5e7281ac437f4ee46a55006cf5c6e9b934a7",
+      "mtime_ns": 1790418651471371143
+    },
+    {
+      "file": "order_items/order_item_part_0003.csv",
+      "table": "order_item",
+      "rows": 349799,
+      "bytes": 45846636,
+      "sha256": "0e6f772c89b06cc912f5967d8a77187e97363ad81598b2b9483a1724a41a6645",
+      "mtime_ns": 1790418656674512230
+    },
+    {
+      "file": "order_items/order_item_part_0004.csv",
+      "table": "order_item",
+      "rows": 349749,
+      "bytes": 45839938,
+      "sha256": "c0731d09b35f6bd73bb3bb5b501ab4ba59d410b30e79300ea8f9f9c590cb574a",
+      "mtime_ns": 1790418661930575655
+    },
+    {
+      "file": "order_items/order_item_part_0005.csv",
+      "table": "order_item",
+      "rows": 350606,
+      "bytes": 45952525,
+      "sha256": "0a53e8356f8e60f2276b9850d991394acdaa13caa4cb1b213d176c1b897134c7",
+      "mtime_ns": 1790418667274579400
+    },
+    {
+      "file": "order_items/order_item_part_0006.csv",
+      "table": "order_item",
+      "rows": 349871,
+      "bytes": 45855344,
+      "sha256": "aae1371bcb033481fbf878db3bdd71f4685ce995d657b3af11a23a71a6fb12b7",
+      "mtime_ns": 1790418672594585662
+    },
+    {
+      "file": "order_items/order_item_part_0007.csv",
+      "table": "order_item",
+      "rows": 350109,
+      "bytes": 45886952,
+      "sha256": "94716407d313fb1f6f871cbc9e36b15f164707900a466b35d26b570fa45c290d",
+      "mtime_ns": 1790418677904594376
+    },
+    {
+      "file": "order_items/order_item_part_0008.csv",
+      "table": "order_item",
+      "rows": 350119,
+      "bytes": 45888470,
+      "sha256": "30b4d4afbac9413dfa86d0b9822bb2baaf6cda30aaa8a6f9133ac17af5b2ebba",
+      "mtime_ns": 1790418683187605455
+    },
+    {
+      "file": "order_items/order_item_part_0009.csv",
+      "table": "order_item",
+      "rows": 350631,
+      "bytes": 45957115,
+      "sha256": "25d897d006b25c43af59c63c0d5cebe1088c64558dc613713ba1b9e3d43b4836",
+      "mtime_ns": 1790418688495618951
+    },
+    {
+      "file": "order_items/order_item_part_0010.csv",
+      "table": "order_item",
+      "rows": 349830,
+      "bytes": 45851485,
+      "sha256": "a94dee82882103a2dc8139500f2d3018c189bc61c0ae433be925ea42c673c1c8",
+      "mtime_ns": 1790418693920635130
+    },
+    {
+      "file": "order_items/order_item_part_0011.csv",
+      "table": "order_item",
+      "rows": 349773,
+      "bytes": 46193480,
+      "sha256": "3f6d573752dc6bc8e20fb448dcda0b87913c1251ecc8af6d2064b94db5bdb88a",
+      "mtime_ns": 1790418699527654357
+    },
+    {
+      "file": "order_items/order_item_part_0012.csv",
+      "table": "order_item",
+      "rows": 350636,
+      "bytes": 46308782,
+      "sha256": "ac91139a412001bc927ec0fde6d240052fc2bc4ab94d2c1b48a035b9ca616b0e",
+      "mtime_ns": 1790418705020675582
+    },
+    {
+      "file": "order_items/order_item_part_0013.csv",
+      "table": "order_item",
+      "rows": 349848,
+      "bytes": 46205488,
+      "sha256": "6bdba8a3b232024c01a21732705d51cddb8147a2a361b9c30eccdf8fc7540f71",
+      "mtime_ns": 1790418710571699413
+    },
+    {
+      "file": "order_items/order_item_part_0014.csv",
+      "table": "order_item",
+      "rows": 350496,
+      "bytes": 46289824,
+      "sha256": "ca8d9524d6bc867a411e925be6e21a753f93cb77cf5ef2a27f4d00dbfd1eda20",
+      "mtime_ns": 1790418715964724779
+    },
+    {
+      "file": "order_items/order_item_part_0015.csv",
+      "table": "order_item",
+      "rows": 350211,
+      "bytes": 46251716,
+      "sha256": "2a8942ca77930b9656163d070bb28450e6a756a0d48541bfafcafacc77da200a",
+      "mtime_ns": 1790418721402752548
+    },
+    {
+      "file": "order_items/order_item_part_0016.csv",
+      "table": "order_item",
+      "rows": 349863,
+      "bytes": 46205950,
+      "sha256": "3b8133c020e4df79e3f4acc9ccdda185232d6498e68e429a065388f87ee4c5e8",
+      "mtime_ns": 1790418726871782622
+    },
+    {
+      "file": "order_items/order_item_part_0017.csv",
+      "table": "order_item",
+      "rows": 350211,
+      "bytes": 46251515,
+      "sha256": "94be8064913ee25bb05dfb406d132acbc3bc1b2dea6751f03e749687ed082fff",
+      "mtime_ns": 1790418732300814580
+    },
+    {
+      "file": "order_items/order_item_part_0018.csv",
+      "table": "order_item",
+      "rows": 349650,
+      "bytes": 46177262,
+      "sha256": "5addc902b32a46eaa84d43749d86e67e8a9a4c1e87c71965804f16dce83098d2",
+      "mtime_ns": 1790418737802849047
+    },
+    {
+      "file": "order_items/order_item_part_0019.csv",
+      "table": "order_item",
+      "rows": 350329,
+      "bytes": 46267388,
+      "sha256": "b6dee45deb2ed19db681877b2d440620e4ee297b26a8136314621d94a808e013",
+      "mtime_ns": 1790418743304885573
+    },
+    {
+      "file": "order_items/order_item_part_0020.csv",
+      "table": "order_item",
+      "rows": 350622,
+      "bytes": 46308562,
+      "sha256": "57f799774f733e99affbfd8bec40664fdb2b7d872998df5390223ae360a54558",
+      "mtime_ns": 1790418748812924149
+    },
+    {
+      "file": "order_items/order_item_part_0021.csv",
+      "table": "order_item",
+      "rows": 350219,
+      "bytes": 46253792,
+      "sha256": "9c715176670d7ab91309291633cfa48fd774499f9756faf7fa785c5e066f453c",
+      "mtime_ns": 1790418754367965056
+    },
+    {
+      "file": "order_items/order_item_part_0022.csv",
+      "table": "order_item",
+      "rows": 350420,
+      "bytes": 46280838,
+      "sha256": "504b5d1d6c07b318e45e09abc53d4aee939b8f7151bd2acf9ba229f2e756f019",
+      "mtime_ns": 1790418759895007698
+    },
+    {
+      "file": "order_items/order_item_part_0023.csv",
+      "table": "order_item",
+      "rows": 349805,
+      "bytes": 46200837,
+      "sha256": "7e4c37d27a745e4412a25bd2197af2da5ef3675fef7720e76345062890505148",
+      "mtime_ns": 1790418765407052127
+    },
+    {
+      "file": "order_items/order_item_part_0024.csv",
+      "table": "order_item",
+      "rows": 349714,
+      "bytes": 46188290,
+      "sha256": "3be9bb8930a692c05033bde2409b35e1b0e5cc157b4b591c7a45c5598f9d2278",
+      "mtime_ns": 1790418770883098091
+    },
+    {
+      "file": "order_items/order_item_part_0025.csv",
+      "table": "order_item",
+      "rows": 349937,
+      "bytes": 46217057,
+      "sha256": "eae55e8481fe6e735713a1d0a41bcb028e7fc1c289b16788502fa3ecef9be594",
+      "mtime_ns": 1790418776425146437
+    },
+    {
+      "file": "order_items/order_item_part_0026.csv",
+      "table": "order_item",
+      "rows": 350574,
+      "bytes": 46303116,
+      "sha256": "1f6da3f33ae710da717235b87d6c324cc5d5702a5804e4a79c7c8f118b90e916",
+      "mtime_ns": 1790418782014196997
+    },
+    {
+      "file": "order_items/order_item_part_0027.csv",
+      "table": "order_item",
+      "rows": 349821,
+      "bytes": 46203871,
+      "sha256": "588e96ea867e69c31fb95f16479aa0b1a950e82d2e7a60cbcaa83de02a88332c",
+      "mtime_ns": 1790418787614249458
+    },
+    {
+      "file": "order_items/order_item_part_0028.csv",
+      "table": "order_item",
+      "rows": 349437,
+      "bytes": 46153370,
+      "sha256": "e538c990989b0e8e1a491a39053a51249c51537f6e56ccd23204083c598c971b",
+      "mtime_ns": 1790418793228303800
+    },
+    {
+      "file": "order_items/order_item_part_0029.csv",
+      "table": "order_item",
+      "rows": 350217,
+      "bytes": 46255863,
+      "sha256": "5507faf63e4fa9877f5068f1438ec7253b469337caf61ed49f43f04ee6091d42",
+      "mtime_ns": 1790418798820359642
+    },
+    {
+      "file": "order_items/order_item_part_0030.csv",
+      "table": "order_item",
+      "rows": 350172,
+      "bytes": 46251427,
+      "sha256": "73e9d0883ebccf7aeebfdae40abce9bd1e69e805e0c16fb7168a4d697047556f",
+      "mtime_ns": 1790418804426417305
+    },
+    {
+      "file": "order_items/order_item_part_0031.csv",
+      "table": "order_item",
+      "rows": 348790,
+      "bytes": 46069203,
+      "sha256": "0e05d062885d319662ef34c711c7fb051ddf8a299d43785a6c59ce4c14fcc3cf",
+      "mtime_ns": 1790418809997476227
+    },
+    {
+      "file": "order_items/order_item_part_0032.csv",
+      "table": "order_item",
+      "rows": 350222,
+      "bytes": 46258215,
+      "sha256": "aaf936e127314f169a36eb2323c5c4da8509e9a503327b8f080bc994e09f7c92",
+      "mtime_ns": 1790418815605537157
+    },
+    {
+      "file": "order_items/order_item_part_0033.csv",
+      "table": "order_item",
+      "rows": 350323,
+      "bytes": 46271308,
+      "sha256": "a2da0a0d0b23dba46494dcddf7207ff2407caae8189bf8425ceafa7e0a12f3ef",
+      "mtime_ns": 1790418821220599732
+    },
+    {
+      "file": "order_items/order_item_part_0034.csv",
+      "table": "order_item",
+      "rows": 349678,
+      "bytes": 46184906,
+      "sha256": "33339004903edfa7faadffb695195f0be33723ee013bad02e848449e196cab20",
+      "mtime_ns": 1790418826838663886
+    },
+    {
+      "file": "order_items/order_item_part_0035.csv",
+      "table": "order_item",
+      "rows": 350117,
+      "bytes": 46241018,
+      "sha256": "bec4249f6b818e07d6f219ff5d10fb5ed699752a1d6f7269f095184adf74c375",
+      "mtime_ns": 1790418832414729059
+    },
+    {
+      "file": "order_items/order_item_part_0036.csv",
+      "table": "order_item",
+      "rows": 349794,
+      "bytes": 46197867,
+      "sha256": "8fe4eb43c8ed58101204ac118ca79e03b826fdd517d683ae2ea7c9de5cd79271",
+      "mtime_ns": 1790418838043796322
+    },
+    {
+      "file": "order_items/order_item_part_0037.csv",
+      "table": "order_item",
+      "rows": 349813,
+      "bytes": 46198992,
+      "sha256": "0124f3861c8e5c9ca2141b72ffa57b0d689d8c62c7b6460f075c5c7dcde6ce1d",
+      "mtime_ns": 1790418843646864726
+    },
+    {
+      "file": "order_items/order_item_part_0038.csv",
+      "table": "order_item",
+      "rows": 349472,
+      "bytes": 46153272,
+      "sha256": "6c36dd47e0f898ced2d4c91b42280bdb468960c8ead0963e43958eaeab8d0956",
+      "mtime_ns": 1790418849282934949
+    },
+    {
+      "file": "order_items/order_item_part_0039.csv",
+      "table": "order_item",
+      "rows": 350362,
+      "bytes": 46270733,
+      "sha256": "464cac54a25ef0d5be40ce039cf0c70e2f054d18fa658ebc6e5aaa5a184655b3",
+      "mtime_ns": 1790418854910006447
+    },
+    {
+      "file": "order_items/order_item_part_0040.csv",
+      "table": "order_item",
+      "rows": 350268,
+      "bytes": 46257590,
+      "sha256": "fafde5216ab84ce7b4fc1f0701333adc860d2db2fb13c1b69ccbd1aadd2f56cd",
+      "mtime_ns": 1790418860514079010
+    },
+    {
+      "file": "order_items/order_item_part_0041.csv",
+      "table": "order_item",
+      "rows": 350187,
+      "bytes": 46247159,
+      "sha256": "72fc5642e419db36057cbf81b6357374341343c58657e05dbf889030ed7c4060",
+      "mtime_ns": 1790418866102152673
+    },
+    {
+      "file": "order_items/order_item_part_0042.csv",
+      "table": "order_item",
+      "rows": 349712,
+      "bytes": 46184669,
+      "sha256": "3b6e91786672e57330879ceead47bdffcf6d3df9885844e009b08fd97c71dd3d",
+      "mtime_ns": 1790418871767228664
+    },
+    {
+      "file": "order_items/order_item_part_0043.csv",
+      "table": "order_item",
+      "rows": 350015,
+      "bytes": 46223094,
+      "sha256": "de97e5d3c476e26dc5ee7e0adf82d138c7aaae753e7f0eb97cff0f21fe993cc4",
+      "mtime_ns": 1790418877381305243
+    },
+    {
+      "file": "order_items/order_item_part_0044.csv",
+      "table": "order_item",
+      "rows": 349447,
+      "bytes": 46149472,
+      "sha256": "d3affb1560d46b8e8a52c4d0c3da02b5200ae7c8bfd56ef6b1b4021d55da8d38",
+      "mtime_ns": 1790418883019383391
+    },
+    {
+      "file": "order_items/order_item_part_0045.csv",
+      "table": "order_item",
+      "rows": 350191,
+      "bytes": 46248757,
+      "sha256": "115acac0a58313c6a9127765b76f9408c27e51026c1d23a967e4408c36c537c6",
+      "mtime_ns": 1790418888594461875
+    },
+    {
+      "file": "order_items/order_item_part_0046.csv",
+      "table": "order_item",
+      "rows": 349696,
+      "bytes": 46182130,
+      "sha256": "e3a68e9d83a7cdacc4d70c4e06cb27969c3e3c2eb23d1efb77de250e81bdd62a",
+      "mtime_ns": 1790418894296543351
+    },
+    {
+      "file": "order_items/order_item_part_0047.csv",
+      "table": "order_item",
+      "rows": 349829,
+      "bytes": 46199436,
+      "sha256": "b658963c0359d3830f01ea7a9ddf58e6830dd1631a31eea3ff01874d802fba49",
+      "mtime_ns": 1790418899942625204
+    },
+    {
+      "file": "order_items/order_item_part_0048.csv",
+      "table": "order_item",
+      "rows": 350200,
+      "bytes": 46249367,
+      "sha256": "18e82e186ecdd14110c6ba347e83bdd3e1c5b77500aff989a2572d9b3fbe3592",
+      "mtime_ns": 1790418905680709571
+    },
+    {
+      "file": "order_items/order_item_part_0049.csv",
+      "table": "order_item",
+      "rows": 349582,
+      "bytes": 46166593,
+      "sha256": "6541d71106b3cba852c3bff82b1e1a5fbad85e96153d003ec93cbc06dcd9a354",
+      "mtime_ns": 1790418911357794179
+    },
+    {
+      "file": "order_items/order_item_part_0050.csv",
+      "table": "order_item",
+      "rows": 350121,
+      "bytes": 46238928,
+      "sha256": "6bc766a6a2317e744d79b24ddbada08da2b8bbd9cee380f202f150bf396fa7d4",
+      "mtime_ns": 1790418917590888349
+    }
+  ],
   "row_counts": {
+    "brand": 20,
+    "category": 25,
+    "seller": 50,
+    "customer": 30000,
+    "product": 3000,
+    "promotion": 30,
+    "promotion_product": 500,
     "order": 5000000,
     "order_item": 17500990
   },
-  "settings": {
-    "effective_cache_size": {
-      "setting": "524288",
-      "unit": "8kB"
-    },
-    "effective_io_concurrency": {
-      "setting": "1",
-      "unit": null
-    },
-    "hash_mem_multiplier": {
-      "setting": "2",
-      "unit": null
-    },
-    "jit": {
-      "setting": "on",
-      "unit": null
-    },
-    "max_parallel_workers_per_gather": {
-      "setting": "2",
-      "unit": null
-    },
-    "random_page_cost": {
-      "setting": "4",
-      "unit": null
-    },
-    "shared_buffers": {
-      "setting": "16384",
-      "unit": "8kB"
-    },
-    "work_mem": {
-      "setting": "4096",
-      "unit": "kB"
-    }
-  },
-  "constraints": [
-    {
-      "table": "\"order\"",
-      "name": "order_created_check",
-      "definition": "CHECK ((created_at >= order_date))"
-    },
-    {
-      "table": "\"order\"",
-      "name": "order_customer_id_fkey",
-      "definition": "FOREIGN KEY (customer_id) REFERENCES customer(customer_id)"
-    },
-    {
-      "table": "\"order\"",
-      "name": "order_order_code_key",
-      "definition": "UNIQUE (order_code)"
-    },
-    {
-      "table": "\"order\"",
-      "name": "order_pkey",
-      "definition": "PRIMARY KEY (order_id)"
-    },
-    {
-      "table": "\"order\"",
-      "name": "order_status_check",
-      "definition": "CHECK (((status)::text = ANY (ARRAY[('PLACED'::character varying)::text, ('PAID'::character varying)::text, ('SHIPPED'::character varying)::text, ('DELIVERED'::character varying)::text, ('CANCELLED'::character varying)::text, ('RETURNED'::character varying)::text])))"
-    },
-    {
-      "table": "\"order\"",
-      "name": "order_total_check",
-      "definition": "CHECK ((total_amount >= (0)::numeric))"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_created_check",
-      "definition": "CHECK ((created_at >= order_date))"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_order_id_fkey",
-      "definition": "FOREIGN KEY (order_id) REFERENCES \"order\"(order_id)"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_order_item_code_key",
-      "definition": "UNIQUE (order_item_code)"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_pkey",
-      "definition": "PRIMARY KEY (order_item_id)"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_price_check",
-      "definition": "CHECK ((unit_price > (0)::numeric))"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_product_id_fkey",
-      "definition": "FOREIGN KEY (product_id) REFERENCES product(product_id)"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_quantity_check",
-      "definition": "CHECK ((quantity > 0))"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_source_unique",
-      "definition": "UNIQUE (order_id, product_id)"
-    },
-    {
-      "table": "order_item",
-      "name": "order_item_subtotal_check",
-      "definition": "CHECK ((subtotal = ((quantity)::numeric * unit_price)))"
-    }
+  "created_databases": [
+    "ecommerce_bench_a1_20261015_jiatvt",
+    "ecommerce_bench_a2_20261015_jiatvt"
   ],
-  "stages": {
-    "A": {
-      "label": "Original SQL / No performance indexes",
-      "performance_indexes": []
+  "load_order": [
+    "A1",
+    "A2"
+  ],
+  "load_repetitions": 1,
+  "disk_reserve_bytes": 4294967296,
+  "query_methodology": {
+    "stages": {
+      "B1": "authentic historical SQL, constraint indexes only",
+      "B2": "current canonical body, constraint indexes only",
+      "B3": "same current body, four additional indexes"
     },
-    "B": {
-      "label": "Optimized SQL / No performance indexes",
-      "performance_indexes": []
-    },
-    "C": {
-      "label": "Optimized SQL / Four performance indexes",
-      "performance_indexes": [
-        "order_active_date_idx",
-        "order_active_amount_idx",
-        "order_item_active_product_idx",
-        "product_active_seller_idx"
-      ]
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "randomized_round_seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47
+    ],
+    "execution_time": "PostgreSQL EXPLAIN Execution Time in milliseconds; planning separate",
+    "statement_timeout_seconds": 180,
+    "cache": "warm OS/database cache; no OS cache reset; stages sequential",
+    "statistics_noidx_seconds": 2.3375394949980546,
+    "statistics_indexed_seconds": 0.7768487610010197,
+    "function_diagnostics": [
+      {
+        "stage": "B2",
+        "case": "monthly_items",
+        "plan_differs": false,
+        "execution_ms": 7851.307,
+        "planning_ms": 0.24,
+        "shared_hit_blocks": 10431,
+        "shared_read_blocks": 367223,
+        "temp_read_blocks": 135268,
+        "temp_written_blocks": 135581,
+        "rows": 5,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 183112,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "daily_selective",
+        "plan_differs": false,
+        "execution_ms": 900.723,
+        "planning_ms": 0.248,
+        "shared_hit_blocks": 150058,
+        "shared_read_blocks": 351964,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 151,
+        "index_names": [
+          "order_pkey"
+        ],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Nested Loop": 1,
+          "Seq Scan": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "seller_performance_selective",
+        "plan_differs": false,
+        "execution_ms": 1312.201,
+        "planning_ms": 0.423,
+        "shared_hit_blocks": 662861,
+        "shared_read_blocks": 384749,
+        "temp_read_blocks": 724,
+        "temp_written_blocks": 727,
+        "rows": 22,
+        "index_names": [
+          "order_pkey"
+        ],
+        "node_types": {
+          "Merge Join": 1,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 2,
+          "Nested Loop": 1,
+          "Hash Join": 1,
+          "Seq Scan": 3,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 1952,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "top_brand_selective",
+        "plan_differs": true,
+        "execution_ms": 1736.408,
+        "planning_ms": 0.563,
+        "shared_hit_blocks": 12305,
+        "shared_read_blocks": 365397,
+        "temp_read_blocks": 22981,
+        "temp_written_blocks": 23148,
+        "rows": 94,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 2,
+          "Incremental Sort": 2,
+          "WindowAgg": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 3,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 16,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "status_selective",
+        "plan_differs": true,
+        "execution_ms": 1685.002,
+        "planning_ms": 0.342,
+        "shared_hit_blocks": 13616,
+        "shared_read_blocks": 364185,
+        "temp_read_blocks": 293,
+        "temp_written_blocks": 294,
+        "rows": 6,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Aggregate": 1,
+          "Sort": 1,
+          "Seq Scan": 3,
+          "Gather": 1,
+          "Hash Join": 1,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 2344,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "monthly_orders",
+        "plan_differs": false,
+        "execution_ms": 2584.541,
+        "planning_ms": 0.137,
+        "shared_hit_blocks": 12843,
+        "shared_read_blocks": 62923,
+        "temp_read_blocks": 30323,
+        "temp_written_blocks": 30402,
+        "rows": 5,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 121304,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "orders_seller_march",
+        "plan_differs": false,
+        "execution_ms": 138594.612,
+        "planning_ms": 0.284,
+        "shared_hit_blocks": 59402104,
+        "shared_read_blocks": 147587,
+        "temp_read_blocks": 800,
+        "temp_written_blocks": 802,
+        "rows": 105583,
+        "index_names": [
+          "order_item_source_unique"
+        ],
+        "node_types": {
+          "Sort": 1,
+          "Seq Scan": 2,
+          "Hash Join": 1,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 6400,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "items_product",
+        "plan_differs": false,
+        "execution_ms": 280.587,
+        "planning_ms": 0.163,
+        "shared_hit_blocks": 1,
+        "shared_read_blocks": 72027,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 25154,
+        "index_names": [
+          "order_item_source_unique"
+        ],
+        "node_types": {
+          "Sort": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "highest_order",
+        "plan_differs": true,
+        "execution_ms": 693.285,
+        "planning_ms": 0.136,
+        "shared_hit_blocks": 78,
+        "shared_read_blocks": 75774,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 1,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Limit": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "top_products",
+        "plan_differs": false,
+        "execution_ms": 4548.673,
+        "planning_ms": 0.341,
+        "shared_hit_blocks": 5591,
+        "shared_read_blocks": 372000,
+        "temp_read_blocks": 108584,
+        "temp_written_blocks": 109224,
+        "rows": 20,
+        "index_names": [
+          "product_pkey"
+        ],
+        "node_types": {
+          "Limit": 1,
+          "Sort": 2,
+          "Merge Join": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "seller_sales",
+        "plan_differs": false,
+        "execution_ms": 14402.33,
+        "planning_ms": 0.44,
+        "shared_hit_blocks": 6076,
+        "shared_read_blocks": 371740,
+        "temp_read_blocks": 281414,
+        "temp_written_blocks": 282345,
+        "rows": 50,
+        "index_names": [],
+        "node_types": {
+          "Sort": 2,
+          "Hash Join": 3,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 204008,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "product_month",
+        "plan_differs": true,
+        "execution_ms": 8446.714,
+        "planning_ms": 0.33,
+        "shared_hit_blocks": 49260,
+        "shared_read_blocks": 371549,
+        "temp_read_blocks": 248677,
+        "temp_written_blocks": 249564,
+        "rows": 14399,
+        "index_names": [
+          "product_pkey"
+        ],
+        "node_types": {
+          "Nested Loop": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 180624,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "daily_broad",
+        "plan_differs": false,
+        "execution_ms": 6976.834,
+        "planning_ms": 0.237,
+        "shared_hit_blocks": 7259,
+        "shared_read_blocks": 370395,
+        "temp_read_blocks": 135269,
+        "temp_written_blocks": 135582,
+        "rows": 151,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 179296,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "seller_performance_broad",
+        "plan_differs": false,
+        "execution_ms": 8992.146,
+        "planning_ms": 0.446,
+        "shared_hit_blocks": 7613,
+        "shared_read_blocks": 370203,
+        "temp_read_blocks": 135270,
+        "temp_written_blocks": 135583,
+        "rows": 50,
+        "index_names": [],
+        "node_types": {
+          "Merge Join": 1,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 2,
+          "Hash Join": 2,
+          "Seq Scan": 4,
+          "Hash": 2
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 181440,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "top_brand_broad",
+        "plan_differs": true,
+        "execution_ms": 5454.705,
+        "planning_ms": 0.539,
+        "shared_hit_blocks": 7690,
+        "shared_read_blocks": 370012,
+        "temp_read_blocks": 108578,
+        "temp_written_blocks": 109204,
+        "rows": 100,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 2,
+          "Incremental Sort": 2,
+          "WindowAgg": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 3,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "status_broad",
+        "plan_differs": true,
+        "execution_ms": 569.905,
+        "planning_ms": 0.178,
+        "shared_hit_blocks": 2128,
+        "shared_read_blocks": 73654,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 6,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B2",
+        "case": "seller_sales_march",
+        "plan_differs": false,
+        "execution_ms": 4656.522,
+        "planning_ms": 0.504,
+        "shared_hit_blocks": 9533,
+        "shared_read_blocks": 368283,
+        "temp_read_blocks": 122868,
+        "temp_written_blocks": 122994,
+        "rows": 50,
+        "index_names": [],
+        "node_types": {
+          "Sort": 2,
+          "Hash Join": 3,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 8,
+        "max_sort_disk_kb": 41968,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "monthly_items",
+        "plan_differs": false,
+        "execution_ms": 7539.975,
+        "planning_ms": 0.314,
+        "shared_hit_blocks": 8915,
+        "shared_read_blocks": 368739,
+        "temp_read_blocks": 135263,
+        "temp_written_blocks": 135575,
+        "rows": 5,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 180544,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "daily_selective",
+        "plan_differs": false,
+        "execution_ms": 166.417,
+        "planning_ms": 0.278,
+        "shared_hit_blocks": 150584,
+        "shared_read_blocks": 96559,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 151,
+        "index_names": [
+          "order_item_active_product_idx",
+          "order_pkey"
+        ],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Nested Loop": 1,
+          "Bitmap Heap Scan": 1,
+          "Bitmap Index Scan": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "seller_performance_selective",
+        "plan_differs": false,
+        "execution_ms": 759.088,
+        "planning_ms": 0.457,
+        "shared_hit_blocks": 512455,
+        "shared_read_blocks": 237569,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 22,
+        "index_names": [
+          "order_item_active_product_idx",
+          "order_pkey",
+          "product_active_seller_idx"
+        ],
+        "node_types": {
+          "Merge Join": 1,
+          "Aggregate": 1,
+          "Incremental Sort": 1,
+          "Nested Loop": 2,
+          "Index Scan": 2,
+          "Index Only Scan": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "top_brand_selective",
+        "plan_differs": true,
+        "execution_ms": 1122.997,
+        "planning_ms": 0.617,
+        "shared_hit_blocks": 27112,
+        "shared_read_blocks": 83352,
+        "temp_read_blocks": 38587,
+        "temp_written_blocks": 38587,
+        "rows": 94,
+        "index_names": [
+          "order_item_active_product_idx",
+          "product_pkey"
+        ],
+        "node_types": {
+          "Subquery Scan": 2,
+          "Incremental Sort": 2,
+          "WindowAgg": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 2,
+          "Seq Scan": 2,
+          "Hash": 2,
+          "Nested Loop": 1,
+          "Index Scan": 1,
+          "Index Only Scan": 1
+        },
+        "max_hash_batches": 16,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "status_selective",
+        "plan_differs": true,
+        "execution_ms": 761.722,
+        "planning_ms": 0.399,
+        "shared_hit_blocks": 4124,
+        "shared_read_blocks": 72718,
+        "temp_read_blocks": 293,
+        "temp_written_blocks": 294,
+        "rows": 6,
+        "index_names": [
+          "order_item_active_product_idx",
+          "product_active_seller_idx"
+        ],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Aggregate": 1,
+          "Sort": 1,
+          "Seq Scan": 1,
+          "Nested Loop": 1,
+          "Bitmap Heap Scan": 1,
+          "Bitmap Index Scan": 1,
+          "Index Only Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 2344,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "monthly_orders",
+        "plan_differs": false,
+        "execution_ms": 2727.094,
+        "planning_ms": 0.148,
+        "shared_hit_blocks": 3242,
+        "shared_read_blocks": 72524,
+        "temp_read_blocks": 30323,
+        "temp_written_blocks": 30402,
+        "rows": 5,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 121304,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "orders_seller_march",
+        "plan_differs": false,
+        "execution_ms": 2069.487,
+        "planning_ms": 0.346,
+        "shared_hit_blocks": 4103001,
+        "shared_read_blocks": 81280,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 105583,
+        "index_names": [
+          "order_active_date_idx",
+          "order_item_source_unique",
+          "product_active_seller_idx"
+        ],
+        "node_types": {
+          "Index Only Scan": 2,
+          "Hash Join": 1,
+          "Index Scan": 1,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "items_product",
+        "plan_differs": false,
+        "execution_ms": 8.622,
+        "planning_ms": 0.145,
+        "shared_hit_blocks": 0,
+        "shared_read_blocks": 303,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 25154,
+        "index_names": [
+          "order_item_active_product_idx"
+        ],
+        "node_types": {
+          "Sort": 1,
+          "Index Only Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "highest_order",
+        "plan_differs": true,
+        "execution_ms": 0.026,
+        "planning_ms": 0.126,
+        "shared_hit_blocks": 0,
+        "shared_read_blocks": 5,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 1,
+        "index_names": [
+          "order_active_amount_idx"
+        ],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Limit": 1,
+          "Index Only Scan": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 0,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "top_products",
+        "plan_differs": false,
+        "execution_ms": 4067.328,
+        "planning_ms": 0.294,
+        "shared_hit_blocks": 13285,
+        "shared_read_blocks": 364306,
+        "temp_read_blocks": 108584,
+        "temp_written_blocks": 109204,
+        "rows": 20,
+        "index_names": [
+          "product_pkey"
+        ],
+        "node_types": {
+          "Limit": 1,
+          "Sort": 2,
+          "Merge Join": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "seller_sales",
+        "plan_differs": false,
+        "execution_ms": 13038.799,
+        "planning_ms": 0.472,
+        "shared_hit_blocks": 13770,
+        "shared_read_blocks": 364046,
+        "temp_read_blocks": 281426,
+        "temp_written_blocks": 282447,
+        "rows": 50,
+        "index_names": [],
+        "node_types": {
+          "Sort": 2,
+          "Hash Join": 3,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 204912,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "product_month",
+        "plan_differs": true,
+        "execution_ms": 7865.415,
+        "planning_ms": 0.366,
+        "shared_hit_blocks": 56953,
+        "shared_read_blocks": 363856,
+        "temp_read_blocks": 248669,
+        "temp_written_blocks": 249421,
+        "rows": 14399,
+        "index_names": [
+          "product_pkey"
+        ],
+        "node_types": {
+          "Nested Loop": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1,
+          "Index Scan": 1
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 182000,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "daily_broad",
+        "plan_differs": false,
+        "execution_ms": 7094.931,
+        "planning_ms": 0.289,
+        "shared_hit_blocks": 14953,
+        "shared_read_blocks": 362701,
+        "temp_read_blocks": 135267,
+        "temp_written_blocks": 135580,
+        "rows": 151,
+        "index_names": [],
+        "node_types": {
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 1,
+          "Seq Scan": 2,
+          "Hash": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 181808,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "seller_performance_broad",
+        "plan_differs": false,
+        "execution_ms": 12584.466,
+        "planning_ms": 0.478,
+        "shared_hit_blocks": 37461,
+        "shared_read_blocks": 280151,
+        "temp_read_blocks": 67777,
+        "temp_written_blocks": 68062,
+        "rows": 50,
+        "index_names": [
+          "order_item_active_product_idx",
+          "product_active_seller_idx"
+        ],
+        "node_types": {
+          "Merge Join": 1,
+          "Aggregate": 1,
+          "Incremental Sort": 1,
+          "Nested Loop": 2,
+          "Index Only Scan": 2,
+          "Materialize": 1,
+          "Gather": 1,
+          "Seq Scan": 2,
+          "Sort": 1
+        },
+        "max_hash_batches": 0,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "top_brand_broad",
+        "plan_differs": true,
+        "execution_ms": 5935.7,
+        "planning_ms": 1.295,
+        "shared_hit_blocks": 134,
+        "shared_read_blocks": 377568,
+        "temp_read_blocks": 108579,
+        "temp_written_blocks": 109188,
+        "rows": 100,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 2,
+          "Incremental Sort": 2,
+          "WindowAgg": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Hash Join": 3,
+          "Seq Scan": 4,
+          "Hash": 3
+        },
+        "max_hash_batches": 64,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "status_broad",
+        "plan_differs": true,
+        "execution_ms": 559.917,
+        "planning_ms": 0.216,
+        "shared_hit_blocks": 591,
+        "shared_read_blocks": 75191,
+        "temp_read_blocks": 0,
+        "temp_written_blocks": 0,
+        "rows": 6,
+        "index_names": [],
+        "node_types": {
+          "Subquery Scan": 1,
+          "Aggregate": 2,
+          "Gather Merge": 1,
+          "Sort": 1,
+          "Seq Scan": 1
+        },
+        "max_hash_batches": 1,
+        "max_sort_disk_kb": 0,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      },
+      {
+        "stage": "B3",
+        "case": "seller_sales_march",
+        "plan_differs": false,
+        "execution_ms": 4455.643,
+        "planning_ms": 0.482,
+        "shared_hit_blocks": 828,
+        "shared_read_blocks": 310627,
+        "temp_read_blocks": 122867,
+        "temp_written_blocks": 122998,
+        "rows": 50,
+        "index_names": [
+          "order_active_date_idx"
+        ],
+        "node_types": {
+          "Sort": 2,
+          "Hash Join": 3,
+          "Aggregate": 1,
+          "Gather Merge": 1,
+          "Seq Scan": 3,
+          "Hash": 3,
+          "Index Only Scan": 1
+        },
+        "max_hash_batches": 8,
+        "max_sort_disk_kb": 41024,
+        "max_workers_launched": 2,
+        "heap_fetches": 0
+      }
+    ],
+    "cases": [
+      {
+        "case": "monthly_items",
+        "function": "report_monthly_revenue",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01"
+        },
+        "baseline_source": "report_monthly_revenue",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "daily_selective",
+        "function": "report_daily_revenue",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_product_ids": [
+            1,
+            2
+          ]
+        },
+        "baseline_source": "report_daily_revenue",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "seller_performance_selective",
+        "function": "report_seller_performance",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_category_ids": [
+            6,
+            7
+          ],
+          "p_brand_ids": [
+            1,
+            2
+          ]
+        },
+        "baseline_source": "report_seller_performance",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "top_brand_selective",
+        "function": "report_top_products_per_brand",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_seller_ids": [
+            1,
+            2
+          ],
+          "p_top_n": 5
+        },
+        "baseline_source": "report_top_products_per_brand",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "status_selective",
+        "function": "report_order_status_summary",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_seller_ids": [
+            1,
+            2
+          ],
+          "p_category_ids": [
+            6,
+            7
+          ]
+        },
+        "baseline_source": "report_order_status_summary",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "monthly_orders",
+        "function": "report_monthly_order_revenue",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity"
+        },
+        "baseline_source": "01_monthly_revenue",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "orders_seller_march",
+        "function": "report_orders_by_seller",
+        "parameters": {
+          "p_start_date": "2025-03-01",
+          "p_end_date": "2025-04-01",
+          "p_seller_ids": [
+            1
+          ]
+        },
+        "baseline_source": "02_orders_by_seller_and_date",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "items_product",
+        "function": "report_items_by_product",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity",
+          "p_product_ids": [
+            1
+          ]
+        },
+        "baseline_source": "03_items_by_product",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "highest_order",
+        "function": "report_highest_value_orders",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity",
+          "p_top_n": 1
+        },
+        "baseline_source": "04_highest_value_order",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "top_products",
+        "function": "report_top_products",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity",
+          "p_top_n": 20
+        },
+        "baseline_source": "05_top_products_by_quantity",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "seller_sales",
+        "function": "report_seller_sales",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity",
+          "p_seller_ids": null
+        },
+        "baseline_source": "08_products_sold_per_seller",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "product_month",
+        "function": "report_product_monthly_revenue",
+        "parameters": {
+          "p_start_date": "-infinity",
+          "p_end_date": "infinity",
+          "p_product_ids": null
+        },
+        "baseline_source": "07_product_monthly_revenue",
+        "baseline_adjustment": "none; historical analytical SELECT retained"
+      },
+      {
+        "case": "daily_broad",
+        "function": "report_daily_revenue",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_product_ids": null
+        },
+        "baseline_source": "report_daily_revenue",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "seller_performance_broad",
+        "function": "report_seller_performance",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_category_ids": null,
+          "p_brand_ids": null
+        },
+        "baseline_source": "report_seller_performance",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "top_brand_broad",
+        "function": "report_top_products_per_brand",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_seller_ids": null,
+          "p_top_n": 5
+        },
+        "baseline_source": "report_top_products_per_brand",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "status_broad",
+        "function": "report_order_status_summary",
+        "parameters": {
+          "p_start_date": "2025-01-01",
+          "p_end_date": "2025-06-01",
+          "p_seller_ids": null,
+          "p_category_ids": null
+        },
+        "baseline_source": "report_order_status_summary",
+        "baseline_adjustment": "none; dynamic parameters replaced with literals"
+      },
+      {
+        "case": "seller_sales_march",
+        "function": "report_seller_sales",
+        "parameters": {
+          "p_start_date": "2025-03-01",
+          "p_end_date": "2025-04-01",
+          "p_seller_ids": null
+        },
+        "baseline_source": "08_products_sold_per_seller",
+        "baseline_adjustment": "March bounds added to authentic rich seller-summary SELECT; joins/metrics unchanged"
+      }
+    ],
+    "sql_sources": {
+      "B1": "database/reporting/original_queries.sql; authentic templates in Git fc35293",
+      "B2_and_B3": "database/reporting/functions.sql SELECT bodies with recorded literal parameters",
+      "callable_diagnostics": "SELECT * FROM the same canonical function with identical parameters"
     }
   },
-  "method": {
-    "warmup_runs": 1,
-    "measured_runs_per_query": 5,
-    "query_order": "randomized with fixed per-round seeds",
-    "cache": "warm; not flushed",
-    "explain": "EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SETTINGS, FORMAT JSON)"
-  },
-  "index_sql": "indexes.sql",
-  "performance_index_sizes_bytes": {
-    "order_active_date_idx": 378640794,
-    "order_active_amount_idx": 414711808,
-    "order_item_active_product_idx": 1656120934,
-    "product_active_seller_idx": 104858
+  "load_storage": {
+    "a1": {
+      "after_load": {
+        "database_bytes": 4881685527,
+        "all_index_bytes": 1772765184,
+        "performance_index_bytes": 0,
+        "indexes": {
+          "brand_brand_code_key": 16384,
+          "brand_brand_name_key": 16384,
+          "brand_pkey": 16384,
+          "category_category_code_key": 16384,
+          "category_category_name_key": 16384,
+          "category_pkey": 16384,
+          "customer_customer_code_key": 958464,
+          "customer_email_key": 2220032,
+          "customer_phone_key": 1179648,
+          "customer_pkey": 688128,
+          "load_checkpoint_pkey": 16384,
+          "order_item_order_item_code_key": 710729728,
+          "order_item_pkey": 393109504,
+          "order_item_source_unique": 393338880,
+          "order_order_code_key": 157720576,
+          "order_pkey": 112328704,
+          "product_pkey": 90112,
+          "product_product_code_key": 114688,
+          "promotion_pkey": 16384,
+          "promotion_product_pkey": 32768,
+          "promotion_product_promotion_product_code_key": 32768,
+          "promotion_product_unique": 40960,
+          "promotion_promotion_code_key": 16384,
+          "seller_pkey": 16384,
+          "seller_seller_code_key": 16384
+        }
+      },
+      "final": {
+        "database_bytes": 7331740695,
+        "all_index_bytes": 4222312448,
+        "performance_index_bytes": 2449547264,
+        "indexes": {
+          "brand_brand_code_key": 16384,
+          "brand_brand_name_key": 16384,
+          "brand_pkey": 16384,
+          "category_category_code_key": 16384,
+          "category_category_name_key": 16384,
+          "category_pkey": 16384,
+          "customer_customer_code_key": 958464,
+          "customer_email_key": 2220032,
+          "customer_phone_key": 1179648,
+          "customer_pkey": 688128,
+          "load_checkpoint_pkey": 16384,
+          "order_active_amount_idx": 414760960,
+          "order_active_date_idx": 378609664,
+          "order_item_active_product_idx": 1656086528,
+          "order_item_order_item_code_key": 710729728,
+          "order_item_pkey": 393109504,
+          "order_item_source_unique": 393338880,
+          "order_order_code_key": 157720576,
+          "order_pkey": 112328704,
+          "product_active_seller_idx": 90112,
+          "product_pkey": 90112,
+          "product_product_code_key": 114688,
+          "promotion_pkey": 16384,
+          "promotion_product_pkey": 32768,
+          "promotion_product_promotion_product_code_key": 32768,
+          "promotion_product_unique": 40960,
+          "promotion_promotion_code_key": 16384,
+          "seller_pkey": 16384,
+          "seller_seller_code_key": 16384
+        }
+      },
+      "vacuum_analyze_seconds_excluded": 2.3375394949980546
+    },
+    "a2": {
+      "after_load": {
+        "database_bytes": 8791718935,
+        "all_index_bytes": 5682790400,
+        "performance_index_bytes": 3910025216,
+        "indexes": {
+          "brand_brand_code_key": 16384,
+          "brand_brand_name_key": 16384,
+          "brand_pkey": 16384,
+          "category_category_code_key": 16384,
+          "category_category_name_key": 16384,
+          "category_pkey": 16384,
+          "customer_customer_code_key": 958464,
+          "customer_email_key": 2220032,
+          "customer_phone_key": 1179648,
+          "customer_pkey": 688128,
+          "load_checkpoint_pkey": 16384,
+          "order_active_amount_idx": 538796032,
+          "order_active_date_idx": 379830272,
+          "order_item_active_product_idx": 2991267840,
+          "order_item_order_item_code_key": 710729728,
+          "order_item_pkey": 393109504,
+          "order_item_source_unique": 393338880,
+          "order_order_code_key": 157720576,
+          "order_pkey": 112328704,
+          "product_active_seller_idx": 131072,
+          "product_pkey": 90112,
+          "product_product_code_key": 114688,
+          "promotion_pkey": 16384,
+          "promotion_product_pkey": 32768,
+          "promotion_product_promotion_product_code_key": 32768,
+          "promotion_product_unique": 40960,
+          "promotion_promotion_code_key": 16384,
+          "seller_pkey": 16384,
+          "seller_seller_code_key": 16384
+        }
+      },
+      "final": {
+        "database_bytes": 8792153111,
+        "all_index_bytes": 5682790400,
+        "performance_index_bytes": 3910025216,
+        "indexes": {
+          "brand_brand_code_key": 16384,
+          "brand_brand_name_key": 16384,
+          "brand_pkey": 16384,
+          "category_category_code_key": 16384,
+          "category_category_name_key": 16384,
+          "category_pkey": 16384,
+          "customer_customer_code_key": 958464,
+          "customer_email_key": 2220032,
+          "customer_phone_key": 1179648,
+          "customer_pkey": 688128,
+          "load_checkpoint_pkey": 16384,
+          "order_active_amount_idx": 538796032,
+          "order_active_date_idx": 379830272,
+          "order_item_active_product_idx": 2991267840,
+          "order_item_order_item_code_key": 710729728,
+          "order_item_pkey": 393109504,
+          "order_item_source_unique": 393338880,
+          "order_order_code_key": 157720576,
+          "order_pkey": 112328704,
+          "product_active_seller_idx": 131072,
+          "product_pkey": 90112,
+          "product_product_code_key": 114688,
+          "promotion_pkey": 16384,
+          "promotion_product_pkey": 32768,
+          "promotion_product_promotion_product_code_key": 32768,
+          "promotion_product_unique": 40960,
+          "promotion_promotion_code_key": 16384,
+          "seller_pkey": 16384,
+          "seller_seller_code_key": 16384
+        }
+      },
+      "vacuum_analyze_seconds_excluded": 2.6050436759978766
+    },
+    "size_snapshot_scope": "Final indexed business database before fixture tests; post-test catalog allocation is excluded."
   }
 }

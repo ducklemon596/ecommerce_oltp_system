@@ -20,7 +20,7 @@ from .strategies.small_table import load_table
 __all__ = [
     "CheckpointMismatchError", "LargeTableLoad", "LoadOutcome", "ORDER_ITEM_LOAD",
     "ORDER_LOAD", "TABLE_LOADS", "TableLoad", "TableLoadError", "apply_schema",
-    "database_config", "load_all", "load_large_part", "load_table", "main",
+    "database_config", "load_all", "load_large_part", "load_table",
 ]
 
 
@@ -106,18 +106,19 @@ def parse_part_number(path: Path, prefix: str) -> int:
         raise ValueError(f"Unexpected part filename: {path.name}") from exc
 
 
-def _arguments() -> argparse.Namespace:
-    """Parse arguments for the schema-and-load command-line entry point."""
-    parser = argparse.ArgumentParser(description="Create the PostgreSQL schema and load generated CSV files.")
+def configure_parser(parser: argparse.ArgumentParser, *, initialization_only: bool = False) -> None:
+    """Share connection/load options across the ``init-db`` and ``load`` CLI commands."""
     parser.add_argument("--config", type=Path, default=Path("database.ini"), help="PostgreSQL INI file (defaults to database.ini).")
     parser.add_argument("--section", default="postgresql")
+    if initialization_only:
+        parser.set_defaults(schema_only=True, skip_schema=False, data_dir=Path("data"))
+        return
     parser.add_argument("--data-dir", type=Path, default=Path("data"))
     parser.add_argument("--schema-only", action="store_true", help="Create tables without loading CSVs.")
     parser.add_argument("--skip-schema", action="store_true", help="Load CSVs without applying schema.sql.")
-    return parser.parse_args()
 
 
-def main() -> None:
+def run(args: argparse.Namespace) -> None:
     """Run the public schema-and-load command-line workflow.
 
     The entry point reads ``database.ini``, optionally applies the packaged
@@ -125,7 +126,6 @@ def main() -> None:
     Schema application and each file load retain their own transactional side
     effects; this function creates the connection and reports total elapsed time.
     """
-    args = _arguments()
     if args.schema_only and args.skip_schema:
         raise SystemExit("--schema-only and --skip-schema cannot be used together.")
     with psycopg2.connect(**database_config(args.config, args.section)) as database:
@@ -136,7 +136,3 @@ def main() -> None:
             started_at = perf_counter()
             loaded = load_all(database, args.data_dir)
             print(f"Complete: loaded {sum(loaded.values()):,} rows in {perf_counter() - started_at:.2f}s.")
-
-
-if __name__ == "__main__":
-    main()

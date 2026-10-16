@@ -37,6 +37,9 @@ Important rules include:
 
 Reference data is validated as a complete dataset before any reference CSV is written. While streaming, each order and its item set is validated before its rows are appended to the current part files.
 
+Streaming is not atomic file publication: a failure can leave headers and valid
+rows in an incomplete part. Generation does not resume interrupted parts.
+
 ## Positional-ID assumption
 
 CSV files deliberately omit database-managed primary keys. Numeric foreign keys in generated records represent the expected PostgreSQL IDs produced when parent CSVs load in their deterministic row order. For example, a product's `brand_id` is the expected row position of its brand, and an order item uses the expected future `order_id`.
@@ -69,7 +72,7 @@ A part contains at most `ORDERS_PER_FILE` orders (100,000 by default). Its match
 Use the single generation entry point:
 
 ```bash
-uv run generate
+uv run ecommerce generate
 ```
 
 Full generation is the default behavior.
@@ -77,26 +80,39 @@ Full generation is the default behavior.
 Smaller run:
 
 ```bash
-uv run generate --orders 1000 --orders-per-file 500
+uv run ecommerce generate --orders 1000 --orders-per-file 500 --output-dir data-sample
 ```
 
 Reference tables only:
 
 ```bash
-uv run generate --base-only
+uv run ecommerce generate --base-only
 ```
 
-The public `generate` command always starts with reference generation, then streams the order tables. Use `--seed`, `--orders`, and `--orders-per-file` to change the relevant settings. Use a clean output directory when comparing deterministic file output; generation overwrites matching names but does not delete old extra part files.
+The full loader also requires paired order/item files; reference-only generation
+is for inspecting the master/dependent stage, not a complete load job.
 
-## Where to look
+By default, `uv run ecommerce generate` starts with reference generation, then streams the
+order tables. To reuse existing customer/product CSVs without changing them:
+
+```bash
+uv run ecommerce generate --orders-only --data-dir data --output-dir data-orders --orders 1000
+```
+
+`--orders-only` and `--base-only` are mutually exclusive. In orders-only mode,
+output defaults to `--data-dir`; full/reference generation defaults to `data`.
+Use `--seed`, `--orders`, and `--orders-per-file` to change the relevant settings.
+Use a clean output directory when comparing deterministic file output; generation
+overwrites matching names but does not delete old extra part files. All generation
+launchers are consolidated into `uv run ecommerce generate`.
+
+## File overview
 
 | Location | Responsibility |
 |---|---|
-| `config.py` | Seed, volumes, windows, domains, and distribution settings |
-| `pipeline.py` | Full generation orchestration |
-| `reference/generator.py` | Brand, category, seller, customer, product, and promotion generation |
-| `reference/validation.py` | Reference/dependent validation |
-| `orders/generator.py` | Streaming order and order-item generation and part-file writing |
-| `orders/models.py` | Order CSV contracts and lightweight reference/statistics models |
-| `orders/validation.py` | Per-order and per-item validation |
-| `io.py` | Reference-table CSV serialization |
+| [config.py](config.py) | Seed, volumes, windows, domains, and distribution settings |
+| [models.py](models.py) | Generic records and the seven-table `GeneratedData` result |
+| [pipeline.py](pipeline.py) | Seed initialization, dependency-aware reference generation, validation, and streaming orchestration |
+| [io.py](io.py) | Reference CSV column contracts and value serialization |
+| [reference/](reference/README.md) | Reference/dependent generation and validation |
+| [orders/](orders/README.md) | Streaming order/item generation, CSV contracts, eligibility models, and validation |

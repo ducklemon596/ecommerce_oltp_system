@@ -1,7 +1,6 @@
-"""Report equivalence and edge contracts using real tables in a rolled-back schema.
+"""Current SQL/functions and business contracts in a rolled-back fixture schema.
 
-No deployed functions, records, indexes, or constraints are modified. Historical
-candidate functions are installed under reference names beside the canonical SQL.
+No production functions, records, indexes, or constraints are modified.
 """
 
 from __future__ import annotations
@@ -15,24 +14,12 @@ import psycopg2
 from psycopg2 import sql
 
 from ecommerce_oltp_system.loader.db.connection import database_config
-from scripts.reporting_workloads import load_query_versions, load_example_queries
+from ecommerce_oltp_system.reporting import REPORTS, execute_report
+from tests.reporting_support import example_parameters, function_definitions, standalone_queries
 
 
 ROOT = Path(__file__).resolve().parents[2]
 WINDOW = ("2025-01-01", "2025-06-01")
-DYNAMIC_CASES = {
-    "report_monthly_revenue": [()],
-    "report_daily_revenue": [(None,), ([],), ([1],), ([1, 2],)],
-    "report_seller_performance": [
-        (None, None), ([], None), (None, []), ([1], [1]), ([1, 2], [1, 2]),
-    ],
-    "report_top_products_per_brand": [
-        (None, 3), ([], 3), ([1], 3), ([1, 2, 3], 3), (None, None),
-    ],
-    "report_order_status_summary": [
-        (None, None), ([], None), (None, []), ([1], [1]), ([1, 2], [1, 2]),
-    ],
-}
 
 
 class ReportingIntegrationTests(unittest.TestCase):
@@ -52,11 +39,6 @@ class ReportingIntegrationTests(unittest.TestCase):
                 cursor.execute(sql.SQL("SET LOCAL search_path TO {}").format(schema))
                 cursor.execute((ROOT / "database/schema.sql").read_text())
                 cursor.execute((ROOT / "database/reporting/functions.sql").read_text())
-                archived = (ROOT / "benchmarks/dynamic_optimized_20261013.sql").read_text()
-                archived = re.sub(
-                    r"(CREATE OR REPLACE FUNCTION )report_", r"\1reference_report_", archived,
-                )
-                cursor.execute(archived)
                 cls._seed(cursor)
         except BaseException:
             cls.database.rollback()
@@ -157,47 +139,58 @@ class ReportingIntegrationTests(unittest.TestCase):
 
     def test_existing_return_columns_remain_compatible(self) -> None:
         """Preserve the five existing callers' column contracts."""
-        for name, cases in DYNAMIC_CASES.items():
+        expected_columns = {
+            "report_monthly_revenue": "month total_orders total_quantity total_revenue",
+            "report_daily_revenue": "date total_orders total_quantity total_revenue",
+            "report_seller_performance": "seller_id seller_name total_orders total_quantity total_revenue",
+            "report_top_products_per_brand": "brand_id brand_name product_id product_name total_quantity total_revenue",
+            "report_order_status_summary": "status total_orders total_revenue",
+        }
+        for name, columns in expected_columns.items():
             with self.subTest(function=name), self.database.cursor() as cursor:
-                call = self._call(name, WINDOW + cases[0])
+                call = self._call(name, WINDOW)
                 cursor.execute(f"SELECT * FROM ({call}) r LIMIT 0")
-                actual = [column.name for column in cursor.description]
-                reference = call.replace(name, f"reference_{name}", 1)
-                cursor.execute(f"SELECT * FROM ({reference}) r LIMIT 0")
-                self.assertEqual(actual, [column.name for column in cursor.description])
+                self.assertEqual([column.name for column in cursor.description], columns.split())
 
-    def test_new_empty_arrays_match_no_rows(self) -> None:
-        """An empty ID array disables results, not filtering, for every new list filter."""
-        for name in ("report_orders_by_seller", "report_items_by_product", "report_seller_sales", "report_product_monthly_revenue"):
-            with self.subTest(function=name):
-                self.assertEqual(self._rows(self._call(name, WINDOW + ([],))), [])
+    def test_empty_arrays_match_no_rows(self) -> None:
+        """Every optional list filter distinguishes an empty list from NULL."""
+        cases = {
+            "report_daily_revenue": [([],)],
+            "report_seller_performance": [([], None), (None, [])],
+            "report_top_products_per_brand": [([], 3)],
+            "report_order_status_summary": [([], None), (None, [])],
+            "report_orders_by_seller": [([],)],
+            "report_items_by_product": [([],)],
+            "report_seller_sales": [([],)],
+            "report_product_monthly_revenue": [([],)],
+        }
+        for name, arguments in cases.items():
+            for extra in arguments:
+                with self.subTest(function=name, arguments=extra):
+                    self.assertEqual(self._rows(self._call(name, WINDOW + extra)), [])
 
-    def _assert_analytical_filters(self, function: str, reference: str) -> None:
+    def _assert_optional_list_filters(self, function: str, reference: str) -> None:
         """Compare one function with a reference over the shared filter scenarios."""
         for ids in (None, [], [1], [1, 2], [999]):
             with self.subTest(ids=ids), self.database.cursor() as cursor:
                 expected = cursor.mogrify(reference, (WINDOW[0], WINDOW[1], ids, ids)).decode()
                 self._assert_equivalent(self._call(function, WINDOW + (ids,)), expected)
 
-    def test_seller_sales_optional_filters_match_original_semantics(self) -> None:
-        """Seller-list filters retain the original rich seller-summary metrics."""
-        original = load_query_versions()["08_products_sold_per_seller"][0]
-        expected = original.replace(
-            "GROUP BY",
-            "AND o.order_date >= %s::timestamp AND o.order_date < %s::timestamp "
-            "AND (%s::integer[] IS NULL OR s.seller_id=ANY(%s::integer[])) GROUP BY",
-        )
-        self._assert_analytical_filters("report_seller_sales", expected)
+    def test_seller_sales_optional_filters_select_seller_groups(self) -> None:
+        """Filtering sellers retains exactly their unfiltered aggregate metrics."""
+        rows = self._rows(self._call("report_seller_sales", WINDOW))
+        for ids in (None, [], [1], [1, 2], [999]):
+            with self.subTest(ids=ids):
+                expected = [row for row in rows if ids is None or row[0] in ids]
+                self.assertEqual(self._rows(self._call("report_seller_sales", WINDOW + (ids,))), expected)
 
-    def test_product_month_optional_filters_match_original_semantics(self) -> None:
-        """Product lists retain the original order-month grouping and item revenue."""
-        original = load_query_versions()["07_product_monthly_revenue"][0]
-        expected = original.replace(
-            "GROUP BY",
-            "AND o.order_date >= %s::timestamp AND o.order_date < %s::timestamp "
-            "AND (%s::integer[] IS NULL OR p.product_id=ANY(%s::integer[])) GROUP BY",
-        )
-        self._assert_analytical_filters("report_product_monthly_revenue", expected)
+    def test_product_month_optional_filters_select_product_groups(self) -> None:
+        """Filtering products leaves their order-month grouping and revenue intact."""
+        rows = self._rows(self._call("report_product_monthly_revenue", WINDOW))
+        for ids in (None, [], [1], [1, 2], [999]):
+            with self.subTest(ids=ids):
+                expected = [row for row in rows if ids is None or row[1] in ids]
+                self.assertEqual(self._rows(self._call("report_product_monthly_revenue", WINDOW + (ids,))), expected)
 
     def test_item_export_optional_filters_preserve_deletion_scope(self) -> None:
         """All product-array shapes select only items, with no dimension deletion test."""
@@ -205,7 +198,7 @@ class ReportingIntegrationTests(unittest.TestCase):
             quantity,unit_price,subtotal FROM order_item
             WHERE order_date >= %s::timestamp AND order_date < %s::timestamp
               AND (%s::integer[] IS NULL OR product_id=ANY(%s::integer[])) AND NOT is_deleted"""
-        self._assert_analytical_filters("report_items_by_product", reference)
+        self._assert_optional_list_filters("report_items_by_product", reference)
 
     def test_order_list_optional_filters_match_distinct_join(self) -> None:
         """The EXISTS implementation matches an independent distinct outer-join query."""
@@ -215,7 +208,7 @@ class ReportingIntegrationTests(unittest.TestCase):
             LEFT JOIN product p ON p.product_id=oi.product_id AND NOT p.is_deleted
             WHERE o.order_date >= %s::timestamp AND o.order_date < %s::timestamp
               AND (%s::integer[] IS NULL OR p.seller_id=ANY(%s::integer[])) AND NOT o.is_deleted"""
-        self._assert_analytical_filters("report_orders_by_seller", reference)
+        self._assert_optional_list_filters("report_orders_by_seller", reference)
 
     def test_null_dates_match_no_rows(self) -> None:
         """Retain existing NULL date behavior across the consolidated catalog."""
@@ -288,12 +281,12 @@ class ReportingIntegrationTests(unittest.TestCase):
         self.assertIn((7, 1), [(row[2], row[3]) for row in rows])
         self.assertNotIn((12, 1), [(row[2], row[3]) for row in rows])
 
-    def test_dynamic_report_uses_item_timestamp(self) -> None:
+    def test_daily_revenue_uses_item_timestamp(self) -> None:
         """Preserve the existing function behavior when denormalized dates differ."""
         rows = self._rows(self._call("report_daily_revenue", ("2025-03-01", "2025-04-01", [6])))
         self.assertEqual([(str(row[0]), row[-1]) for row in rows], [("2025-03-31", 50)])
 
-    def test_analytical_product_month_uses_order_timestamp(self) -> None:
+    def test_product_month_uses_order_timestamp(self) -> None:
         """The original product/month requirement groups by its parent order's date."""
         rows = self._rows(self._call("report_product_monthly_revenue", WINDOW + ([6],)))
         self.assertEqual([(str(row[0]), row[-1]) for row in rows], [("2025-04-01", 50)])
@@ -316,30 +309,51 @@ class ReportingIntegrationTests(unittest.TestCase):
             finally:
                 cursor.execute("ROLLBACK TO SAVEPOINT orphan_test")
 
+    def test_report_runner_fetches_one_extra_row_to_detect_truncation(self) -> None:
+        """Bound exports while retaining the function's deterministic order."""
+        report = next(report for report in REPORTS if report.name == "items")
+        arguments = WINDOW + (None,)
+        _, rows = execute_report(self.database, report, arguments, limit=2)
+        self.assertEqual(rows, self._rows(self._call(report.function, arguments))[:3])
 
-def _analytical_equivalence_test(query_id: str):
-    """Create a focused equivalence test for one original analytical requirement."""
+
+def _standalone_equivalence_test(name: str):
+    """Check one published SELECT's values, row order, and column names."""
     def test(self):
-        original = load_query_versions()[query_id][0]
-        actual = load_example_queries()[query_id]
-        self._assert_equivalent(actual, original)
-    test.__doc__ = f"Preserve {query_id}'s original output bag, including deletion rules."
+        signature = function_definitions()[name][0]
+        parameters = example_parameters(name, signature)
+        call = self._call(name, tuple(parameters.values()))
+        query = standalone_queries()[name]
+        self.assertEqual(self._rows(call), self._rows(query))
+        with self.database.cursor() as cursor:
+            cursor.execute(call)
+            expected = [column.name for column in cursor.description]
+            cursor.execute(query)
+            self.assertEqual([column.name for column in cursor.description], expected)
+    test.__doc__ = f"The standalone {name} SELECT matches the callable function."
     return test
 
 
-def _dynamic_equivalence_test(name: str, cases: list[tuple]):
-    """Create a focused compatibility test for one existing dynamic function."""
+for _name in function_definitions():
+    setattr(ReportingIntegrationTests, f"test_standalone_{_name}", _standalone_equivalence_test(_name))
+
+
+def _runner_equivalence_test(report):
+    """Check one CLI catalog entry against direct SQL with each ID-array shape."""
     def test(self):
-        for extra in cases:
-            with self.subTest(arguments=extra):
-                actual = self._call(name, WINDOW + extra)
-                reference = self._call(f"reference_{name}", WINDOW + extra)
-                self._assert_equivalent(actual, reference)
-    test.__doc__ = f"Preserve {name} for NULL, empty, single-ID, and multi-ID filters."
+        for ids in (None, [], [1], [1, 2], [999]):
+            with self.subTest(ids=ids):
+                arguments = WINDOW + (ids,) * len(report.filters)
+                if report.top_default is not None:
+                    arguments += (report.top_default,)
+                columns, rows = execute_report(self.database, report, arguments, limit=100)
+                self.assertEqual(rows, self._rows(self._call(report.function, arguments)))
+                with self.database.cursor() as cursor:
+                    cursor.execute(self._call(report.function, arguments))
+                    self.assertEqual(columns, tuple(column.name for column in cursor.description))
+    test.__doc__ = f"The {report.name} runner matches {report.function} with typed bound arguments."
     return test
 
 
-for _query_id in load_query_versions():
-    setattr(ReportingIntegrationTests, f"test_analytical_{_query_id}", _analytical_equivalence_test(_query_id))
-for _name, _cases in DYNAMIC_CASES.items():
-    setattr(ReportingIntegrationTests, f"test_compatibility_{_name}", _dynamic_equivalence_test(_name, _cases))
+for _report in REPORTS:
+    setattr(ReportingIntegrationTests, f"test_runner_{_report.function}", _runner_equivalence_test(_report))

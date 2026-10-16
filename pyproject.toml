@@ -1,7 +1,7 @@
 [project]
 name = "ecommerce-oltp-system"
 version = "0.1.0"
-description = "Deterministic e-commerce data generation, PostgreSQL loading, and SQL reporting benchmarks"
+description = "Deterministic e-commerce data generation, PostgreSQL loading, and SQL reporting"
 readme = "README.md"
 authors = [
     { name = "ducklemon596", email = "thienquang050906@gmai.com" }
@@ -13,8 +13,8 @@ dependencies = [
 ]
 
 [project.scripts]
-generate = "ecommerce_oltp_system.generate:main"
-load = "ecommerce_oltp_system.load:main"
+ecommerce = "ecommerce_oltp_system.cli:main"
+report = "ecommerce_oltp_system.reporting:main"
 
 [build-system]
 requires = ["uv_build>=0.12.15,<0.13.0"]

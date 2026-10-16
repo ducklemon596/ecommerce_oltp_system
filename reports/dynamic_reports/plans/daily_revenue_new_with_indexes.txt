@@ -1,9 +1,0 @@
-Aggregate: Actual Rows=151; Plan Rows=38506; Actual Loops=1; Actual Total Time=195.231; Shared Hit Blocks=36; Shared Read Blocks=76692; Temp Read Blocks=293; Temp Written Blocks=294
-  Sort: Actual Rows=75046; Plan Rows=39771; Actual Loops=1; Actual Total Time=184.166; Shared Hit Blocks=36; Shared Read Blocks=76692; Temp Read Blocks=293; Temp Written Blocks=294; Sort Method=external merge; Sort Space Used=2344
-    Nested Loop: Join Filter=(o.order_id = oi.order_id); Actual Rows=75046; Plan Rows=39771; Actual Loops=1; Actual Total Time=159.799; Shared Hit Blocks=36; Shared Read Blocks=76692; Temp Read Blocks=0; Temp Written Blocks=0
-      Index Only Scan on order_item using order_item_active_product_idx: Index Cond=((oi.product_id = ANY ('{1,2,3}'::integer[])) AND (oi.order_date >= '2025-01-01 00:00:00'::timestamp without time zone) AND (oi.order_date < '2025-06-01 00:00:00'::timestamp without time zone)); Actual Rows=75046; Plan Rows=39771; Actual Loops=1; Actual Total Time=9.949; Shared Hit Blocks=36; Shared Read Blocks=868; Temp Read Blocks=0; Temp Written Blocks=0; Heap Fetches=0
-      Materialize: Actual Rows=0; Plan Rows=1; Actual Loops=75046; Actual Total Time=0.002; Shared Hit Blocks=0; Shared Read Blocks=75824; Temp Read Blocks=0; Temp Written Blocks=0
-        Gather: Actual Rows=0; Plan Rows=1; Actual Loops=1; Actual Total Time=138.458; Shared Hit Blocks=0; Shared Read Blocks=75824; Temp Read Blocks=0; Temp Written Blocks=0
-          Seq Scan on order: Filter=o.is_deleted; Actual Rows=0; Plan Rows=1; Actual Loops=3; Actual Total Time=128.464; Shared Hit Blocks=0; Shared Read Blocks=75824; Temp Read Blocks=0; Temp Written Blocks=0
-Planning Time: 0.338 ms
-Execution Time: 196.181 ms

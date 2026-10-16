@@ -6,34 +6,46 @@ dist/
 wheels/
 *.egg-info/
 .venv/
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Generated datasets and database exports
 /data/
+/data-*/
+/reports/results/
+/reports/**/raw/
+/reports/**/tmp/
 *.csv
+!/reports/sql_optimization/loading.csv
+!/reports/sql_optimization/summary.csv
+!/reports/sql_optimization/measurements.csv
 *.dump
 *.backup
 *.sql.gz
 *.sql.bz2
 *.sql.zst
 
-# Keep concise, reproducible benchmark measurements.
-!/reports/**/summary.csv
-!/reports/**/measurements.csv
-
-# Optional full plans, query-result exports, and temporary experiments
-/reports/**/raw/
-/experiments/**/results/
-/benchmarks/tmp/
+# Temporary local outputs
 *.tmp
 *.log
+*.pid
 
 # Local credentials and environment-owned configuration
 database.ini
+/database-*.ini
+/benchmark*.ini
+/test-database*.ini
 .env
 .env.*
 !.env.example
 .aws/
 .codex/
+.agents/
 
 # Editor/OS artifacts
 .idea/
@@ -41,7 +53,3 @@ database.ini
 .DS_Store
 *.swp
 *~
-
-# Legacy local assignment filenames; maintained assignment lives under docs/.
-Project 03 - Python in Data.md
-Project 04 - SQL.md

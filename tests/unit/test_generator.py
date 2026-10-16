@@ -93,7 +93,3 @@ def _dataset_fingerprint(data: object) -> str:
 def _record_values(record: dict) -> tuple:
     """Return stable comparable values for one generated record."""
     return tuple(sorted(record.items()))
-
-
-if __name__ == "__main__":
-    unittest.main()
