@@ -23,7 +23,7 @@ regressed substantially. The results favor workload-specific engineering decisio
   17,500,990 items, and 33,625 reference/dependent rows.
 - Two fresh databases used the same schema, inputs, loader, transaction boundaries,
   and final index definitions. Required PK, UNIQUE, FK, and CHECK constraints stayed
-  enabled throughout. No partitioning or new optimization was introduced.
+  enabled throughout. No partitioning was introduced.
 - Only one large benchmark database existed at a time. Approximately 21.8 GiB was
   initially free; a 4 GiB disk reserve was checked before loads and queries.
   No unrelated client workload was present at preflight.
