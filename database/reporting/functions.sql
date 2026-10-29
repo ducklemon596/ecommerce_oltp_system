@@ -182,13 +182,13 @@ AS $$
                SUM(oi.quantity)::BIGINT AS total_quantity,
                SUM(oi.subtotal) AS total_revenue
         FROM order_item oi
-        JOIN "order" o ON o.order_id = oi.order_id
         JOIN product p ON p.product_id = oi.product_id
         JOIN brand b ON b.brand_id = p.brand_id
         WHERE oi.order_date >= p_start_date::TIMESTAMP
           AND oi.order_date < p_end_date::TIMESTAMP
           AND (p_seller_ids IS NULL OR p.seller_id = ANY(p_seller_ids))
-          AND NOT oi.is_deleted AND NOT o.is_deleted
+          AND NOT oi.is_deleted
+          AND NOT EXISTS (SELECT 1 FROM "order" o WHERE o.order_id = oi.order_id AND o.is_deleted)
           AND NOT p.is_deleted AND NOT b.is_deleted
         GROUP BY b.brand_id, b.brand_name, p.product_id, p.product_name
     ), ranked AS (
@@ -210,6 +210,7 @@ $$;
 -- REPORT 05 | ORDER STATUS SUMMARY
 -- Purpose: count each qualifying order once and sum its full total.
 -- Inputs: order-date window, optional seller/category lists qualifying through active items/products.
+-- Disjoint branches keep EXISTS in a top-level AND for PostgreSQL 16 semi-join pull-up.
 -- Function: report_order_status_summary
 -- Terminal: uv run ecommerce report status
 -- ==============================================================================
@@ -226,37 +227,35 @@ RETURNS TABLE (
 )
 LANGUAGE SQL STABLE PARALLEL SAFE
 AS $$
+    WITH qualifying_orders AS (
+        SELECT o.status, o.total_amount
+        FROM "order" o
+        WHERE p_seller_ids IS NULL AND p_category_ids IS NULL
+          AND o.order_date >= p_start_date::TIMESTAMP
+          AND o.order_date < p_end_date::TIMESTAMP
+          AND NOT o.is_deleted
+        UNION ALL
+        SELECT o.status, o.total_amount
+        FROM "order" o
+        WHERE (p_seller_ids IS NOT NULL OR p_category_ids IS NOT NULL)
+          AND o.order_date >= p_start_date::TIMESTAMP
+          AND o.order_date < p_end_date::TIMESTAMP
+          AND NOT o.is_deleted
+          AND EXISTS (
+              SELECT 1
+              FROM order_item oi
+              JOIN product p ON p.product_id = oi.product_id
+              WHERE oi.order_id = o.order_id
+                AND NOT oi.is_deleted AND NOT p.is_deleted
+                AND (p_seller_ids IS NULL OR p.seller_id = ANY(p_seller_ids))
+                AND (p_category_ids IS NULL OR p.category_id = ANY(p_category_ids))
+          )
+    )
     SELECT
         o.status,
         COUNT(*) AS total_orders,
         SUM(o.total_amount) AS total_revenue
-    FROM "order" o
-    WHERE o.order_date >= p_start_date::TIMESTAMP
-      AND o.order_date < p_end_date::TIMESTAMP
-      AND NOT o.is_deleted
-      AND (
-          (
-              p_seller_ids IS NULL
-              AND p_category_ids IS NULL
-          )
-          OR EXISTS (
-              SELECT 1
-              FROM order_item oi
-              JOIN product p
-                ON p.product_id = oi.product_id
-              WHERE oi.order_id = o.order_id
-                AND NOT oi.is_deleted
-                AND NOT p.is_deleted
-                AND (
-                    p_seller_ids IS NULL
-                    OR p.seller_id = ANY(p_seller_ids)
-                )
-                AND (
-                    p_category_ids IS NULL
-                    OR p.category_id = ANY(p_category_ids)
-                )
-          )
-      )
+    FROM qualifying_orders o
     GROUP BY o.status
     ORDER BY o.status;
 $$;
@@ -288,6 +287,7 @@ $$;
 -- REPORT 07 | ORDERS BY SELLER
 -- Purpose: full totals of orders containing matching sellers' active items.
 -- NULL sellers means all active orders, even those without items; seller deletion is ignored.
+-- Disjoint branches preserve NULL/empty arrays and allow semi-join pull-up; sort once.
 -- Function: report_orders_by_seller
 -- Terminal: uv run ecommerce report orders
 -- ==============================================================================
@@ -302,14 +302,21 @@ LANGUAGE SQL STABLE PARALLEL SAFE
 AS $$
     SELECT o.order_id, o.order_code, o.customer_id, o.order_date, o.status, o.total_amount
     FROM "order" o
-    WHERE o.order_date >= p_start_date::TIMESTAMP
+    WHERE p_seller_ids IS NULL
+      AND o.order_date >= p_start_date::TIMESTAMP
       AND o.order_date < p_end_date::TIMESTAMP AND NOT o.is_deleted
-      AND (p_seller_ids IS NULL OR EXISTS (
+    UNION ALL
+    SELECT o.order_id, o.order_code, o.customer_id, o.order_date, o.status, o.total_amount
+    FROM "order" o
+    WHERE p_seller_ids IS NOT NULL
+      AND o.order_date >= p_start_date::TIMESTAMP
+      AND o.order_date < p_end_date::TIMESTAMP AND NOT o.is_deleted
+      AND EXISTS (
           SELECT 1 FROM order_item oi JOIN product p ON p.product_id = oi.product_id
           WHERE oi.order_id = o.order_id AND p.seller_id = ANY(p_seller_ids)
             AND NOT oi.is_deleted AND NOT p.is_deleted
-      ))
-    ORDER BY o.order_date, o.order_id;
+      )
+    ORDER BY order_date, order_id;
 $$;
 -- END REPORT 07 | report_orders_by_seller
 

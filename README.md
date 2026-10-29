@@ -233,8 +233,8 @@ Important semantics:
 
 Deploy functions explicitly using the quick-start command or pgAdmin's Query Tool.
 To inspect a standalone SELECT, prefix it with `EXPLAIN (ANALYZE, BUFFERS)`.
-Execute each index statement separately in autocommit mode: `CREATE INDEX
-CONCURRENTLY` cannot run inside a transaction. The loader installs neither
+Execute [indexes.sql](database/indexes.sql) explicitly after loading; its standard
+`CREATE INDEX` statements may run inside a transaction. The loader installs neither
 reporting functions nor these performance indexes.
 
 The [reporting catalog](database/reporting/README.md) specifies each function's
@@ -242,36 +242,23 @@ filters, deletion scope, revenue definition, and ranking tie-breaks.
 
 ## Benchmark snapshot
 
-Historical manual measurements used 500,000 orders and 1,750,656 order items, with five measured runs after warm-up. Under the full schema (checks, PK/UNIQUE, FKs, and UPSERT), `COPY → staging → final` outperformed `execute_values`:
+The [SQL optimization case study](reports/sql_optimization/README.md) evaluates
+5 million orders and 17.5 million items using three consecutive warmups and seven
+measured executions per query. Official primary B1/B2/FINAL results remain
+separate from diagnostic controls and the historical C1+C2 selection stage.
 
-| Table | `execute_values` median | COPY/staging median | Relative improvement |
-|---|---:|---:|---:|
-| `order` | 14.38 s / 34,759 rows/s | 7.29 s / 68,570 rows/s | 1.97× |
-| `order_item` | 64.47 s / 27,153 rows/s | 35.05 s / 49,947 rows/s | 1.84× |
-
-PK/UNIQUE indexes and foreign-key checks were the largest observed costs, especially for `order_item`. These are environment-specific measurements, not production capacity guarantees.
-
-### Full-dataset loading and SQL evaluation
-
-| Evaluation | Measured result |
+| Finding | Historical evidence |
 |---|---|
-| Load, then build four performance indexes | 456.74 s total phase time |
-| Build indexes, then load | 560.00 s total phase time |
-| Product-item lookup with indexes | 32.28× faster than optimized SQL without indexes |
-| Broad seller performance with indexes | 40.3% slower than its no-additional-index plan |
+| March status summary, SQL rewrite | 141,685.865 → 1,301.510 ms |
+| Equal-family workload, B2 → historical seven-index B3 | 32,742.020 → 27,487.573 ms |
+| Portfolio recommendation | C1+C2, 826.602 MiB; not deployed by the report cleanup |
+| Separate full-dataset loading study | Load then build: 456.742 s; indexes before load: 560.001 s |
 
-Loading first was **18.4% faster overall** in one full run per strategy and used
-**1.36 GiB less** performance-index storage. Query comparison used 17 cases,
-three configurations, and five measured executions after warm-up per case/stage.
-SQL rewriting helped several aggregates, but the seller/date optional-filter
-query regressed from 1.34 s to 134.82 s without additional indexes; indexed access
-reduced it to 2.14 s. These results justify workload-specific decisions, not
-blanket claims that every rewrite or index is faster.
-
-Read the [canonical performance evaluation](reports/sql_optimization/README.md)
-for complete tables, methodology, execution-plan findings, limitations, and index
-recommendations. Keep useful selective indexes; independently evaluate the date
-index before removal. No partitioning benefit was established.
+The portfolio prioritizes sufficient interactive performance and OLTP maintenance
+costs over maximum read speed. The [report](reports/sql_optimization/README.md)
+explains the 26-session/104-SQL daily scenario, regressions, omitted indexes and
+limitations. The [evidence guide](reports/sql_optimization/evidence/README.md)
+provides the compact captures and integrity manifest. No benchmarks were rerun.
 
 ## Repository structure
 
@@ -327,6 +314,6 @@ See [tests/README.md](tests/README.md) for scope and safety.
 - No partitioning, checkpoint pruning, parallel loading, or configurable retry
   policy is implemented. Performance results are environment-specific.
 
-Useful next evaluations are isolated index ablation, the seller/date query shape,
+Useful next evaluations are the seller/date query shape, broad aggregation spill,
 and actual report frequency. Database migration tooling and source-key ID remapping
 would address operational limitations; they are not implemented features.

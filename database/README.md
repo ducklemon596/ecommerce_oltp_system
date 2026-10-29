@@ -8,7 +8,7 @@ Database connection settings live in the local, ignored `database.ini`.
 | File or folder | Purpose |
 |---|---|
 | [schema.sql](schema.sql) | Symlink to the loader's canonical [packaged DDL](../src/ecommerce_oltp_system/loader/sql/schema.sql); final tables, constraints, staging, and checkpoints |
-| [indexes.sql](indexes.sql) | Single source for the four approved partial composite performance indexes |
+| [indexes.sql](indexes.sql) | Canonical source for workload-selected performance indexes |
 | [reporting/](reporting/README.md) | Parameterized functions, equivalent standalone SELECTs, original comparison SQL, and report semantics |
 
 ## Usage and deployment order
@@ -17,9 +17,10 @@ Database connection settings live in the local, ignored `database.ini`.
 2. Run `uv run ecommerce init-db` or `uv run ecommerce load` to install application DDL.
 3. Load the dataset in dependency order.
 4. Deploy reporting functions in the same schema as the application tables.
-5. If needed, execute each `indexes.sql` statement separately in autocommit mode.
+5. If needed, execute `indexes.sql` explicitly after loading.
 
-`CREATE INDEX CONCURRENTLY` cannot execute inside a transaction block. Indexes and
+`indexes.sql` uses standard `CREATE INDEX` with serial maintenance and may run
+inside a transaction. Indexes and
 reporting functions are not installed by the loader or report runner. For initial
 bulk loads, the [benchmark evaluation](../reports/sql_optimization/README.md)
 supports building performance indexes afterward; integrity indexes stay enabled.

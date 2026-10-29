@@ -36,8 +36,5 @@ services:
       - pgadmin_data:/var/lib/pgadmin
 
 volumes:
-  # Reuse the data directory mounted by the existing postgres-dev container.
   postgres_data:
-    external: true
-    name: 20eeb3ce9ff37a6c1747cd1f9351b09835fbfc9e99a44847ff457020df5a58fa
   pgadmin_data:

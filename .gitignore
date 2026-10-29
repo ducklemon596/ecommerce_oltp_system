@@ -21,9 +21,6 @@ htmlcov/
 /reports/**/raw/
 /reports/**/tmp/
 *.csv
-!/reports/sql_optimization/loading.csv
-!/reports/sql_optimization/summary.csv
-!/reports/sql_optimization/measurements.csv
 *.dump
 *.backup
 *.sql.gz
@@ -53,3 +50,6 @@ database.ini
 .DS_Store
 *.swp
 *~
+
+# AGENTS.MD
+AGENTS.md
