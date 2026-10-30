@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from ecommerce_oltp_system.cli import main
 from tests.reporting_support import (
-    ROOT, example_parameters, function_definitions, render_example, standalone_queries,
+    ROOT, function_definitions, standalone_queries,
 )
 
 
@@ -21,13 +21,13 @@ class ReportingSqlTests(unittest.TestCase):
         self.assertEqual(len(definitions), 12)
         self.assertEqual(list(standalone_queries()), list(definitions))
 
-    def test_standalone_queries_only_substitute_parameter_literals(self):
-        queries = standalone_queries()
-        for name, (signature, _, body) in function_definitions().items():
+    def test_standalone_queries_are_complete_literal_selects(self):
+        """Literal-only examples omit function parameter guards; DB tests check values."""
+        for name, query in standalone_queries().items():
             with self.subTest(function=name):
-                expected = render_example(body, example_parameters(name, signature))
-                self.assertEqual(re.sub(r"\s+", " ", queries[name]), re.sub(r"\s+", " ", expected))
-                self.assertNotRegex(queries[name], r"\bp_\w+\b|\breport_\w+\s*\(")
+                self.assertRegex(query, r"^(SELECT|WITH)\b")
+                self.assertTrue(query.endswith(";"))
+                self.assertNotRegex(query, r"\bp_\w+\b|\breport_\w+\s*\(|\bARRAY\[|\bANY\(|infinity")
 
     def test_schema_entrypoint_matches_installed_package_resource(self):
         packaged = files("ecommerce_oltp_system.loader.sql").joinpath("schema.sql").read_bytes()

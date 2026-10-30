@@ -1,7 +1,8 @@
 """Read the current SQL catalog for standalone/function contract tests.
 
-The examples substitute literals into canonical SQL bodies rather than maintain
-a second implementation. Tests enforce that relationship without benchmark data.
+Standalone examples use fixed literals and omit parameter-dependent branches.
+Database integration tests compare their values, ordering, and columns with the
+parameterized functions; this module only reads signatures and sample inputs.
 """
 
 import re

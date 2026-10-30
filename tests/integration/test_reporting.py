@@ -16,6 +16,7 @@ from psycopg2 import sql
 from ecommerce_oltp_system.loader.db.connection import database_config
 from ecommerce_oltp_system.reporting import REPORTS, execute_report
 from tests.reporting_support import example_parameters, function_definitions, standalone_queries
+from tests.integration_support import connect_test_database, test_settings
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,10 +29,7 @@ class ReportingIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Create the fixture schema without committing any DDL or records."""
-        try:
-            cls.database = psycopg2.connect(**database_config(ROOT / "database.ini"))
-        except (psycopg2.OperationalError, FileNotFoundError) as error:
-            raise unittest.SkipTest(f"PostgreSQL unavailable: {error}") from error
+        cls.database = connect_test_database(test_settings())
         try:
             with cls.database.cursor() as cursor:
                 schema = sql.Identifier(f"report_test_{uuid.uuid4().hex[:12]}")

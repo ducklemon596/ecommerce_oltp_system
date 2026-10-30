@@ -7,11 +7,13 @@ For setup and the complete workflow, see the [root README](../../../README.md). 
 ## End-to-end load flow
 
 ```text
-connect using database.ini
+validate config, required files/paired parts, and requested setup SQL
+  -> connect using database.ini
   -> apply schema.sql (unless --skip-schema)
   -> load reference/dependent CSV files
   -> for each part: load order, then matching order_item
   -> report row counts and elapsed time
+  -> optionally install reporting functions/C1+C2 in a separate transaction
 ```
 
 The schema includes final constrained tables, unlogged `staging_order` and `staging_order_item` tables, and the `load_checkpoint` table.
@@ -113,15 +115,25 @@ initialization. Both commands delegate to the same pipeline and connection confi
 
 A file/table is the recovery unit for small tables; a part file is the recovery unit for `order` and `order_item`. Previously committed files remain committed when a later unit fails. Restart the same command after correcting the cause: matching completed files skip, while an uncheckpointed failed unit loads again.
 
-A changed file under an existing completed filename is deliberately rejected. Rename/regenerate consistently or resolve the checkpoint intentionally; the loader does not silently merge changed source contents.
+A changed file under an existing completed filename is deliberately rejected.
+Restore the original input or use a fresh isolated database/dataset; do not delete
+checkpoints or rename changed completed inputs to bypass validation.
+
+If post-load setup fails, ingestion remains committed. Correct the cause and run
+`ecommerce setup` with the same connection, SQL and index options. The CLI reports
+this partial success explicitly. The [decision note](../../../docs/decisions/recoverable-load.md)
+explains the transaction boundary and recovery trade-off.
 
 ## Performance evaluation
 
-The [canonical evaluation](../../../reports/sql_optimization/README.md) measures
+The [canonical evaluation](../../../reports/SQL_Optimization_README.md) measures
 full-dataset loading with performance indexes built before or after ingestion.
 It supports building those indexes after an initial bulk load while keeping
-required integrity/UPSERT indexes enabled. Index installation is separate from
-this loader. Measurements and their limitations belong in that report, not here.
+required integrity/UPSERT indexes enabled. Bare loading does not install optional
+indexes. `load --indexes recommended` explicitly deploys functions and C1+C2 after
+successful ingestion; `setup` exposes that operation separately. See the
+[usage guide](../../../docs/usage/usage-guide.md). Measurements and their limitations
+belong in the performance report, not here.
 
 ## File overview
 

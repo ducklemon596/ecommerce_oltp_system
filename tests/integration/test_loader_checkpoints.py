@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from pathlib import Path
 from unittest.mock import patch
+from tests.integration_support import connect_test_database, test_settings
 
 import psycopg2
 
@@ -32,16 +33,18 @@ class LoaderCheckpointIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """Create the isolated PostgreSQL schema for this test class."""
+        settings = test_settings()
+        cls.schema = f"loader_test_{uuid.uuid4().hex[:12]}"
+        cls.admin = connect_test_database(settings)
         try:
-            settings = database_config(Path("database.ini"), "postgresql")
-            cls.schema = f"loader_test_{uuid.uuid4().hex[:12]}"
-            cls.admin = psycopg2.connect(**settings)
             with cls.admin.cursor() as cursor:
                 cursor.execute(f"CREATE SCHEMA {cls.schema}")
             cls.admin.commit()
             cls.settings = {**settings, "options": f"-c search_path={cls.schema},public"}
-        except psycopg2.OperationalError as error:
-            raise unittest.SkipTest(f"PostgreSQL unavailable: {error}") from error
+        except BaseException:
+            cls.admin.rollback()
+            cls.admin.close()
+            raise
 
     @classmethod
     def tearDownClass(cls) -> None:

@@ -9,6 +9,7 @@ PostgreSQL instance or production-size generation is required.
 |---|---|
 | [test_generator.py](test_generator.py) | Reference counts, deterministic seeds, temporal validation, and database-managed PK omission |
 | [test_generation_contracts.py](test_generation_contracts.py) | Streamed headers, cross-part code continuity, timestamp/calculation rules, and validation-before-write |
+| [test_database_setup.py](test_database_setup.py) | C1/C2 selection, explicit transactions, post-load ordering, and category/filter dispatch |
 | [test_report_cli.py](test_report_cli.py) | Parameter parsing, report selection, read-only calls, CSV exports, truncation, cleanup, and generation-mode dispatch |
 | [test_reporting_sql.py](test_reporting_sql.py) | Function/standalone SQL agreement, packaged DDL consistency, console scripts, and CLI forwarding |
 

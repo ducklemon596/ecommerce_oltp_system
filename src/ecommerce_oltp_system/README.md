@@ -7,7 +7,8 @@ through one application CLI. Business SQL stays in the [database package](../../
 
 | File or package | Purpose |
 |---|---|
-| [cli.py](cli.py) | Routes `ecommerce generate`, `init-db`, `load`, and `report` |
+| [cli.py](cli.py) | Routes `ecommerce generate`, `init-db`, `load`, `setup`, and `report` |
+| [database_setup.py](database_setup.py) | Explicit deployment of unchanged functions and C1+C2 statements |
 | [generate.py](generate.py) | Parses generation options and selects full, reference-only, or orders-only mode |
 | [reporting.py](reporting.py) | Maps report names to deployed SQL functions, binds parameters, and saves bounded CSV exports |
 | [generators/](generators/README.md) | Data generation, validation, models, and CSV writing; no database connections |
@@ -20,7 +21,7 @@ From the repository root:
 
 ```bash
 uv run ecommerce --help
-uv run report list
+uv run ecommerce report list
 ```
 
 The CLI delegates to the packages rather than implementing their workflows again.

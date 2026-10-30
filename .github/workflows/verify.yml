@@ -1,0 +1,65 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.12
+      - run: uv sync --locked --python 3.12
+      - run: uv run python -m unittest discover -s tests/unit -v
+      - run: uv build
+      - name: Verify wheel from outside the checkout
+        run: |
+          uv venv /tmp/ecommerce-wheel --python 3.12
+          uv pip install --python /tmp/ecommerce-wheel/bin/python dist/*.whl
+          cd /tmp
+          uv run --no-project /tmp/ecommerce-wheel/bin/python -c "from importlib.resources import files; assert files('ecommerce_oltp_system.loader.sql').joinpath('schema.sql').read_text().startswith('CREATE TABLE')"
+          /tmp/ecommerce-wheel/bin/ecommerce --help
+          /tmp/ecommerce-wheel/bin/ecommerce report list
+          /tmp/ecommerce-wheel/bin/report list
+
+  integration-and-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: ecommerce_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ecommerce_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ECOMMERCE_TEST_CONFIG: /tmp/ecommerce-ci.ini
+      ECOMMERCE_TEST_STRICT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.12
+      - run: uv sync --locked --python 3.12
+      - name: Configure disposable PostgreSQL service
+        run: |
+          umask 077
+          cat > "$ECOMMERCE_TEST_CONFIG" <<'INI'
+          [postgresql]
+          host=127.0.0.1
+          port=5432
+          database=ecommerce_test
+          user=postgres
+          password=test-only
+          INI
+      - run: uv run python -m unittest discover -s tests/integration -v

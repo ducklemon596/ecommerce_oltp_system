@@ -46,6 +46,13 @@ REPORTS = (
     Report("product-monthly", "report_product_monthly_revenue", "Product revenue and units per order month.", ("products",)),
 )
 
+# Convenience batches call existing functions; they are not benchmark sessions.
+GROUPS = {
+    "broad": ("monthly", "monthly-orders", "seller-sales", "seller-performance", "product-monthly"),
+    "ranking": ("highest-orders", "top-products", "top-products-per-brand"),
+    "drill-down": ("seller-performance", "top-products-per-brand", "orders", "status"),
+}
+
 
 def parse_ids(value: str) -> list[int] | None:
     """Parse optional ID arrays without losing the NULL versus empty distinction."""
@@ -112,6 +119,15 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     _common_options(all_reports, inherit=True)
     all_reports.add_argument("--only", nargs="+", choices=[report.name for report in REPORTS], help="Save only these reports (space-separated names).")
     all_reports.set_defaults(handler=run_all)
+    for name, members in GROUPS.items():
+        group = commands.add_parser(name, help=f"Export {len(members)} {name} reports into a category directory.")
+        _common_options(group, inherit=True)
+        filters = sorted({key for report in REPORTS if report.name in members for key in report.filters})
+        for key in filters:
+            group.add_argument(f"--{key}", type=parse_ids, default=None, metavar="IDS",
+                               help=f"Filter reports supporting {key}; others retain their own inputs.")
+        group.add_argument("--top", type=int, default=None, help="Override business Top-N for ranking functions in this category.")
+        group.set_defaults(handler=run_group, group=name, only=members)
     for report in REPORTS:
         command = commands.add_parser(report.name, help=report.description, description=report.description)
         _common_options(command, inherit=True)
@@ -171,7 +187,7 @@ def list_reports(_args: argparse.Namespace) -> None:
         rows.append((report.name, report.function, ", ".join(options) or "—"))
     print_table(("report", "PostgreSQL function", "report options"), rows)
     print("All reports: --start / --end (March 2025 by default), --limit, --output-dir, --config, --section.")
-    print("Use uv run report to save all reports; uv run report <report> --help for details.")
+    print("Categories: " + ", ".join(GROUPS) + ". Use uv run ecommerce report <category|report> --help.")
 
 
 def save_csv(report: Report, args: argparse.Namespace, columns: tuple[str, ...], rows: list[tuple]) -> Path:
@@ -200,6 +216,7 @@ def run(args: argparse.Namespace) -> None:
     Reuses the loader's INI configuration. Connections close after success or
     failure; reporting never deploys functions or changes application records.
     """
+    validate_window(args)
     arguments = (args.start, args.end, *(getattr(args, name) for name in args.report.filters))
     if args.report.top_default is not None:
         arguments += (args.top,)
@@ -210,7 +227,7 @@ def run(args: argparse.Namespace) -> None:
                 columns, rows = execute_report(database, args.report, arguments, args.limit)
         path = save_csv(args.report, args, columns, rows[:args.limit])
     except psycopg2.errors.UndefinedFunction as error:
-        raise SystemExit("Reporting function unavailable. Deploy database/reporting/functions.sql in the configured schema first; see README.md.") from error
+        raise SystemExit("Reporting function unavailable. Run uv run ecommerce setup --indexes none to deploy database/reporting/functions.sql; see docs/usage/README.md.") from error
     except (psycopg2.Error, OSError, ValueError) as error:
         raise SystemExit(f"Cannot run report: {error}") from error
     print(f"SAVED {path} ({min(len(rows), args.limit)} rows).")
@@ -225,12 +242,14 @@ def run_all(args: argparse.Namespace) -> None:
     reports create no CSV; successful exports remain available. Exit nonzero if
     any report failed, so incomplete runs cannot be mistaken for full success.
     """
+    validate_window(args)
     selected = getattr(args, "only", None)
     reports = [report for report in REPORTS if selected is None or report.name in selected]
     failures = []
     for report in reports:
-        options = {**vars(args), "report": report, "top": report.top_default}
-        options.update(dict.fromkeys(report.filters))
+        options = {**vars(args), "report": report,
+                   "top": args.top if getattr(args, "top", None) is not None else report.top_default}
+        options.update({name: getattr(args, name, None) for name in report.filters})
         try:
             run(argparse.Namespace(**options))
         except SystemExit as error:
@@ -240,6 +259,18 @@ def run_all(args: argparse.Namespace) -> None:
             print(f"FAILED {report.name}: {error}", file=sys.stderr)
     if failures:
         raise SystemExit(f"Saved {len(reports) - len(failures)}/{len(reports)} reports. Failed: {', '.join(failures)}.")
+
+
+def validate_window(args: argparse.Namespace) -> None:
+    """Reject empty or reversed windows before opening any report connection."""
+    if args.start >= args.end:
+        raise SystemExit("Invalid date window: --start must be earlier than --end (end is exclusive).")
+
+
+def run_group(args: argparse.Namespace) -> None:
+    """Reuse batch exports with category-specific output and supported filters."""
+    options = {**vars(args), "output_dir": args.output_dir / args.group}
+    run_all(argparse.Namespace(**options))
 
 
 def main(argv: list[str] | None = None) -> None:

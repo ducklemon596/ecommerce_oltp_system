@@ -245,7 +245,7 @@ class ReportCliTests(unittest.TestCase):
         """Never install SQL automatically as a side effect of reporting."""
         database = MagicMock()
         with patch("ecommerce_oltp_system.reporting.psycopg2.connect", return_value=database):
-            with self.assertRaisesRegex(SystemExit, "Deploy database/reporting/functions.sql"):
+            with self.assertRaisesRegex(SystemExit, "ecommerce setup --indexes none"):
                 main(["report", "monthly"])
         database.close.assert_called_once()
 

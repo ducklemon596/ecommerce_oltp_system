@@ -2,7 +2,7 @@
 
 import argparse
 
-from . import generate, reporting
+from . import database_setup, generate, reporting
 from .loader import pipeline as loader
 
 
@@ -22,6 +22,9 @@ def main(argv: list[str] | None = None) -> None:
     load_parser = commands.add_parser("load", help="Load CSV files with transactional checkpoints.")
     loader.configure_parser(load_parser)
     load_parser.set_defaults(handler=loader.run)
+
+    setup_parser = commands.add_parser("setup", help="Install schema, reporting functions, and recommended C1+C2 indexes.")
+    database_setup.configure_parser(setup_parser)
 
     report_parser = commands.add_parser("report", help="List or execute PostgreSQL reports.")
     reporting.configure_parser(report_parser)

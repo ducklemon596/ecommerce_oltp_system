@@ -1,167 +1,100 @@
-# Reporting catalog
+# SQL Reporting Catalog
 
-Owns SQL aggregation, attribution, filters, and rankings. Python only binds
-parameters and exports results; it does not duplicate business calculations.
+**Twelve PostgreSQL functions** turn transactional orders and order items into management summaries, seller drill-downs, and product rankings. **Business calculations live in SQL**; Python passes parameters and exports the results to CSV.
 
-## File overview
+## Explore the reports
 
-| File | Purpose |
+| Workload | Typical questions | CLI examples |
+|---|---|---|
+| **Broad reporting** | How much did we sell? How are sellers and products performing? | `report broad` |
+| **Rankings / Top-K** | Which orders and products rank highest? | `report ranking` |
+| **Drill-down** | What happened for a seller, brand, category, or date range? | `report drill-down` |
+
+A category command executes a convenient **batch of existing functions**. Categories can share functions, and they are **not** the same as the simulated benchmark sessions.
+
+### All 12 available functions
+
+| CLI name | PostgreSQL function | What it returns |
+|---|---|---|
+| `monthly` | `report_monthly_revenue` | Monthly item revenue, units, and distinct orders. |
+| `daily` | `report_daily_revenue` | Daily item revenue, optionally filtered by products. |
+| `seller-performance` | `report_seller_performance` | Seller-level sales and order metrics with category/brand filters. |
+| `top-products-per-brand` | `report_top_products_per_brand` | Top products **within each brand**, not globally. |
+| `status` | `report_order_status_summary` | Order counts and **full order totals** by status. |
+| `monthly-orders` | `report_monthly_order_revenue` | Monthly revenue from full order totals, not item subtotals. |
+| `orders` | `report_orders_by_seller` | Orders matching seller and date conditions. |
+| `items` | `report_items_by_product` | Order items matching a product filter. |
+| `highest-orders` | `report_highest_value_orders` | Highest-value orders, default Top-N = 1. |
+| `top-products` | `report_top_products` | Products ranked by quantity sold, default Top-N = 20. |
+| `seller-sales` | `report_seller_sales` | Seller sales, distinct product types, items, units, and revenue. |
+| `product-monthly` | `report_product_monthly_revenue` | Item revenue by product and month, using the parent order date. |
+
+The original specification had **13 requirements but 12 functions**: the March seller-order requirement is a column projection of `report_seller_sales`, not a duplicated aggregation.
+
+## Key SQL design decisions
+
+| Decision | Why it matters |
 |---|---|
-| [functions.sql](functions.sql) | Canonical definitions of all 12 parameterized PostgreSQL reports |
-| [queries.sql](queries.sql) | The same SQL bodies, in catalog order, with executable example literals |
-| [original_queries.sql](original_queries.sql) | Original baseline SELECTs retained for educational comparison, with provenance and scope warnings |
+| **Filter with existence checks (`EXISTS` / semi-join)** | An order with multiple matching items should be counted **once**, not duplicated by a one-to-many join. |
+| **Respect deleted-parent exclusions (`NOT EXISTS` / anti-join where applicable)** | Apply soft-deletion rules without unnecessarily scanning or duplicating parent rows. |
+| **Keep order totals separate from item revenue** | A status summary or monthly order-total report should not silently switch to summing selected line items. |
+| **Use the correct timestamp** | Some reports use `order_item.order_date`; others use the parent `order.order_date`. These are **not guaranteed to match**. |
+| **Define stable Top-K tie-breakers** | Equal quantities or amounts must still produce predictable ranking results. |
+| **Keep calculations in PostgreSQL** | The Python reporter does not reimplement joins or aggregations, reducing duplicated business logic. |
 
-Standalone examples are complete SELECTs, not function calls.
-Contract tests detect divergence; integration tests compare values, ordering, and
-column names on fixtures that include soft deletions and mismatched item dates.
+These choices are about **correct results first**, followed by measurable performance improvements. The [optimization case study](../../reports/SQL_Optimization_README.md) compares original/reworked SQL and selective, broad, and Top-K plans.
 
-Both SQL files use matching numbered `REPORT` / `END REPORT` comment blocks.
-Each block identifies the function, purpose, and relevant inputs. In pgAdmin,
-select one complete block from `queries.sql` to run a report; execute
-`functions.sql` only when deploying or replacing the callable functions.
+### Important business semantics
 
-[original_queries.sql](original_queries.sql) preserves the authentic, unoptimized
-SELECT implementations recovered from Git commit `fc35293`. It is a benchmark
-baseline and educational reference, not another production reporting layer.
-Original all-history scopes and timestamp choices are documented in that file;
-the final functions and examples above remain the optimized implementations.
+- **Date windows** are start-inclusive and end-exclusive: `[start_date, end_date)`. All functions take `p_start_date DATE, p_end_date DATE` first. Use `DATE '-infinity'` and `DATE 'infinity'` for an all-history window; NULL date bounds return no rows.
+- **Optional ID arrays:** `NULL` means no filter; an empty `INTEGER[]` matches nothing. Only matching item revenue is attributed to filtered products/sellers.
+- **Revenue** includes all recorded order statuses, including cancelled or returned orders. It represents **gross recorded revenue**, not recognized or net revenue.
+- **Soft deletions** are deliberately report-specific. Item exports exclude deleted items only; seller performance and seller sales exclude deleted sellers, products, items, and orders. Monthly/daily item reports do not filter deleted products. See [`functions.sql`](functions.sql) for each report's exact rules.
+- **Rankings:** Within-brand Top-N defaults to 10, global product Top-N to 20, and highest orders to 1. NULL/nonpositive limits yield no rows. Tie-breakers are documented in SQL.
 
-## Coverage: 13 requirements, 12 functions
+## Run the reports
 
-| Original requirement | CLI report | Canonical function | Important distinction |
-|---|---|---|---|
-| Monthly revenue report, including units | `monthly` | `report_monthly_revenue` | Active item revenue; distinct orders with active items |
-| Daily revenue with product list | `daily` | `report_daily_revenue` | Item-date grain; revenue only from matching products |
-| Seller performance with category/brand filters | `seller-performance` | `report_seller_performance` | Attributed item revenue, distinct orders per seller |
-| Top products within each brand | `top-products-per-brand` | `report_top_products_per_brand` | Top-N **per brand**, optional seller list |
-| Orders status summary | `status` | `report_order_status_summary` | Count each order once; sum its **full order total** |
-| Total revenue per month | `monthly-orders` | `report_monthly_order_revenue` | Full order totals, including orders without active items |
-| Orders filtered by seller and date | `orders` | `report_orders_by_seller` | Full order rows qualifying through matching items |
-| Filter order items by product | `items` | `report_items_by_product` | Active items only; no parent/product deletion filtering |
-| Highest-value order | `highest-orders` | `report_highest_value_orders` | Global amount ranking; default Top-N = 1 |
-| Products with highest quantity sold | `top-products` | `report_top_products` | Global quantity ranking; default Top-N = 20 |
-| Orders by seller in March 2025 | `seller-sales` | `report_seller_sales` | March window and a projection of seller-summary columns |
-| Revenue per product per month | `product-monthly` | `report_product_monthly_revenue` | Product/month item totals, using the parent order date |
-| Products sold per seller | `seller-sales` | `report_seller_sales` | Distinct product types, orders, line rows, units, item revenue |
-
-Only the two seller-sales requirements share an aggregation. Monthly order totals
-and item subtotals are not interchangeable. Global rankings and within-brand
-rankings also remain separate. Seller performance retains item-date semantics;
-seller sales uses the parent order date.
-
-## Parameters and semantics
-
-Every function starts with `p_start_date DATE, p_end_date DATE` and uses a
-start-inclusive, end-exclusive window. Examples use January 1–June 1, 2025.
-Use `DATE '-infinity'` / `DATE 'infinity'` for all history.
-
-- `NULL` date bounds produce no rows. Empty groups are omitted.
-- Optional ID lists are `INTEGER[]`: `NULL` disables a filter; `ARRAY[]::INTEGER[]`
-  matches nothing. Product/seller aggregates attribute only matching line revenue.
-- Top-N is `p_top_n INTEGER`: default 10 within each brand, 20 globally, 1 for
-  highest-value orders. NULL/nonpositive values return no rows.
-- Revenue includes all recorded statuses, including cancelled/returned; this is
-  gross recorded revenue, not recognized or net revenue.
-- Status filtering qualifies each order through one active item/product matching
-  both seller and category filters; it does not multiply order totals.
-- “Active” means `NOT is_deleted`; no report filters `product.is_active`.
-
-Monthly/daily item reports ignore product deletion. Seller performance excludes
-deleted sellers/products/items/orders, but not deleted category/brand dimensions.
-Within-brand ranking excludes deleted brands/products/items/orders, not sellers.
-Seller sales excludes deleted sellers/products/items/orders. Item export excludes
-only deleted items. Other order-based reports exclude deleted orders.
-
-Item-date reports retain their existing timestamp contracts. Product/month and
-seller-sales reports use the order timestamp: item/order timestamp equality is
-not a database constraint. Deleted-parent anti-joins require the schema's NOT NULL
-order ID and foreign key. Do not remove these constraints.
-
-Within-brand ties use quantity DESC, revenue DESC, then product ID. Global product
-ties use product ID after quantity; highest-order ties use order ID after amount.
-Seller-sales order counts cannot be summed into a distinct platform order count.
-
-## Usage and maintenance
-
-### Automatic CSV exports
+Start with the [local setup guide](../../docs/usage/usage-guide.md) to deploy the reporting functions and configure PostgreSQL. Then, from the repository root:
 
 ```bash
-uv run report                         # save every report
-uv run report monthly                 # save one report
-uv run report all --only monthly daily
-uv run report monthly --output-dir reports/custom
-uv run report list
-uv run ecommerce report --help
+# Discover reports and parameters
+uv run ecommerce report list
+
+# Run a complete category; CSVs are saved automatically
+uv run ecommerce report broad --start 2025-01-01 --end 2025-06-01
+uv run ecommerce report ranking --start 2025-01-01 --end 2025-06-01 --top 5
+uv run ecommerce report drill-down --sellers 1,2 --start 2025-03-01 --end 2025-04-01
+
+# Or run one function
 uv run ecommerce report monthly --start 2025-03-01 --end 2025-04-01
-uv run ecommerce report seller-performance --categories 6,7 --brands 1,2
-uv run ecommerce report top-products-per-brand --sellers 1,2 --top 5
 uv run ecommerce report status --sellers 1,2 --categories 6,7
-uv run ecommerce report daily --products null
-uv run ecommerce report daily --products ""
-uv run ecommerce report daily --products 1,2 --limit 10 --config database.ini --section postgresql
-uv run ecommerce report items --help
 ```
 
-Each report exposes only its applicable filters. All use March 2025 by default;
-the standalone SQL file retains its explicit January–May sample window.
-Omit a filter or pass `null` to disable it; `""` or `[]` passes an empty array and
-matches nothing. Top-N defaults follow the functions. `--limit` defaults to 50
-CSV rows per report and reports truncation, without changing calculations or
-ranking. Increase it to export more rows. It is not a query-cost limit: large
-aggregates still process all qualifying data.
+Exports are UTF-8 CSV files with headers under `reports/results/` (category runs use subdirectories). Each run gets a unique filename. The default export cap is **50 rows per report**; `--limit` changes output size, **not** how much data PostgreSQL must aggregate. Failed exports do not leave partial CSVs, and report connections are read-only.
 
-Results are saved automatically under `reports/results/` (or `--output-dir`), not
-printed as terminal tables. Each CSV contains column headers and a unique filename
-such as `monthly_2025-03-01_2025-04-01_a1b2c3d4e5f6.csv`; repeated runs keep previous
-files. Empty results produce header-only CSVs. Only saved-file confirmations and
-row-limit warnings appear in the terminal. `list` and help still print normally.
-
-Bare `uv run report` and `uv run ecommerce report` save all 12 reports. Use a report
-name for one filtered report, or `all --only monthly daily` for a subset.
-All/subset mode uses NULL filters and each function's default Top-N, with shared
-date/connection/output/limit options. If a report fails, its CSV is not created;
-other reports continue, and the command exits nonzero with the failed report names.
-All required functions must already be deployed for a complete export.
-
-The lightweight runner is [reporting.py](../../src/ecommerce_oltp_system/reporting.py).
-It binds dates/arrays/limits as parameters and quotes only whitelisted function
-identifiers. Results are read in a read-only transaction and the connection closes
-on success or failure. `report list` and help need no database. Execution requires
-the functions to be deployed already; missing functions produce deployment guidance,
-not automatic DDL. The runner does not duplicate any reporting business SQL.
-
-### SQL deployment and direct queries
-
-Install the functions in the same schema as the application tables; see the
-[root quick start](../../README.md#sql-reporting). Functions use the session search
-path. The loader deliberately does not deploy reporting functions or indexes.
+To run SQL directly in pgAdmin, select a full `REPORT` block from [`queries.sql`](queries.sql). To deploy or replace callable PostgreSQL functions, use [`functions.sql`](functions.sql) via the explicit setup workflow. **Report execution never deploys SQL automatically.**
 
 ```sql
-SELECT * FROM report_daily_revenue(
-    DATE '2025-03-01', DATE '2025-04-01', ARRAY[1, 2]
+SELECT *
+FROM report_daily_revenue(
+    DATE '2025-03-01',
+    DATE '2025-04-01',
+    ARRAY[1, 2]
 );
-
--- The March seller-order requirement is a projection of the richer sales report.
-SELECT seller_id, seller_code, seller_name, total_orders, total_quantity, total_revenue
-FROM report_seller_sales(DATE '2025-03-01', DATE '2025-04-01')
-ORDER BY seller_id;
 ```
 
-For educational inspection or pgAdmin EXPLAIN, use the full statements in
-`queries.sql`. Change every occurrence of a sample parameter within its statement.
-When changing logic, edit the function body first, mirror that body with the
-documented literals in `queries.sql`, and run the database-free contract tests:
+## Source files and validation
+
+| File | Use it for |
+|---|---|
+| [`functions.sql`](functions.sql) | **Canonical** definitions of 12 parameterized reporting functions. |
+| [`queries.sql`](queries.sql) | Matching standalone `SELECT` statements with example literals, useful for `EXPLAIN`. |
+| [`original_queries.sql`](original_queries.sql) | Preserved original SQL for educational comparison; not another deployment layer. |
+
+When changing a report, update the function body and its matching standalone query, then verify semantics with unit contracts and PostgreSQL integration tests. Tests cover filtering, soft deletion, timestamps, result values, ordering, and output columns.
 
 ```bash
 uv run python -m unittest discover -s tests/unit -v
 ```
 
-For value/ordering checks against PostgreSQL, follow the
-[integration-test guide](../../tests/integration/README.md) using a dedicated test database.
-
-Approved indexes remain in [../indexes.sql](../indexes.sql). Fresh full-dataset
-loading and current-query measurements are in the
-[performance report](../../reports/sql_optimization/README.md), including broad
-and selective cases, callable-versus-standalone plans, regressions, and index costs.
-Recorded parameters matter: these timings do not predict every filter combination
-or include the CLI's row limit, network transfer, or CSV export time.
+For database-backed checks, use a **dedicated test database** as described in the [integration testing guide](../../tests/integration/README.md). Standalone-query benchmark timings do not include function invocation, network transfer, or CSV export time.
